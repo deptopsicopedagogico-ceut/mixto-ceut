@@ -30,5 +30,536 @@ Error generating stack: `+u.message+`
 </script>
   <script>(function(){function m(a){var h=a.getAttribute("href");if(!h)return;try{var u=new URL(h,document.baseURI);if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){a.target="_blank";a.rel="noopener noreferrer";}}catch(e){}}function s(){document.querySelectorAll("a[href]").forEach(m);}if(document.readyState!=="loading"){s();}else{document.addEventListener("DOMContentLoaded",s);}document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(a){m(a);}},true);})();</script>
   
+
+<!-- CEUT AUTO-CALIFICACION PERFECTA - CAPA DE MEJORA SIN TOCAR CODIGO ORIGINAL -->
+<script>
+// ==================== CEUT SISTEMA DE CALIFICACION AUTOMATICA PRO ====================
+(function(){
+  const LS_SUBJECTS = 'ceut_subjects_v2';
+  const LS_USERS = 'ceut_users_v2';
+  const LS_CORRECT_BANK = 'ceut_correct_bank_v3'; // banco de respuestas correctas del docente
+  const LS_GRADE_OVERRIDES = 'ceut_grade_overrides_v3';
+
+  function getSubjects(){ try{ return JSON.parse(localStorage.getItem(LS_SUBJECTS)||'[]'); }catch(e){return [];} }
+  function saveSubjects(s){ localStorage.setItem(LS_SUBJECTS, JSON.stringify(s)); }
+  function getUsers(){ try{ return JSON.parse(localStorage.getItem(LS_USERS)||'[]'); }catch(e){return [];} }
+  function getCorrectBank(){ try{ return JSON.parse(localStorage.getItem(LS_CORRECT_BANK)||'{}'); }catch(e){return {};} }
+  function saveCorrectBank(b){ localStorage.setItem(LS_CORRECT_BANK, JSON.stringify(b)); }
+
+  // --- MOTORES DE CALIFICACION AUTOMATICA ---
+  function gradeQuiz(preguntas, respuestas, bankCorrect){
+    if(!preguntas||!preguntas.length) return null;
+    let correct=0;
+    preguntas.forEach((p,i)=>{
+      const correcta = bankCorrect && bankCorrect[i]!==undefined ? bankCorrect[i] : p.correcta;
+      if(respuestas && respuestas[i]===correcta) correct++;
+    });
+    return Math.round((correct/preguntas.length)*100)/10; // escala 0-10 con 1 decimal
+  }
+  function gradeVideo(videoPreguntas, respuestas, bankCorrect){
+    if(!videoPreguntas||!videoPreguntas.length) return 10;
+    let correct=0;
+    videoPreguntas.forEach((p,i)=>{
+      const correcta = bankCorrect && bankCorrect[i]!==undefined ? bankCorrect[i] : p.correcta;
+      if(respuestas && respuestas[i]===correcta) correct++;
+    });
+    return Math.round((correct/videoPreguntas.length)*100)/10;
+  }
+  function gradeJuego(juegoPares, matches){
+    if(!juegoPares||!juegoPares.length) return 10;
+    const total=juegoPares.length;
+    const correct=Object.keys(matches||{}).length;
+    // En el juego original solo permite matches correctos, por eso si completo = 10
+    // Si parcial, proporcional
+    return Math.round((correct/total)*100)/10;
+  }
+  function gradeCaso(casoPreguntas, respuestasAlumno, respuestasCorrectasDocente){
+    if(!respuestasAlumno || respuestasAlumno.length===0) return -1;
+    // Si docente no ha definido respuestas correctas, auto 10 por entregar completo
+    if(!respuestasCorrectasDocente || Object.keys(respuestasCorrectasDocente).length===0){
+      // si todas las respuestas tienen al menos 10 caracteres, 10
+      const completas = respuestasAlumno.filter(r=>r && r.trim().length>10).length;
+      if(completas===casoPreguntas.length) return 10;
+      if(completas>0) return Math.round((completas/casoPreguntas.length)*100)/10;
+      return 5;
+    }
+    // Si docente definio respuestas correctas, comparar por palabras clave
+    let score=0;
+    casoPreguntas.forEach((_,i)=>{
+      const esperada = (respuestasCorrectasDocente[i]||"").toLowerCase();
+      const alumno = (respuestasAlumno[i]||"").toLowerCase();
+      if(!esperada) { if(alumno.length>10) score+=1; return; }
+      const keywords = esperada.split(/\s+/).filter(w=>w.length>4);
+      if(keywords.length===0){ if(alumno.length>10) score+=1; return; }
+      const matches = keywords.filter(k=>alumno.includes(k)).length;
+      if(matches>=Math.ceil(keywords.length*0.6)) score+=1;
+      else if(matches>=Math.ceil(keywords.length*0.3)) score+=0.7;
+      else if(alumno.length>20) score+=0.4;
+    });
+    return Math.round((score/casoPreguntas.length)*100)/10;
+  }
+  function gradeForo(texto){ return texto && texto.trim().length>20 ? 10 : 8; }
+  function gradeTarea(archivo,texto){ if(archivo||texto) return 10; return -1; }
+  function gradeGeneric(){ return 10; }
+
+  function autoGradeActivity(act, entrega, correctBank){
+    const bank = correctBank[act.id] || {};
+    try{
+      switch(act.tipo){
+        case 'quiz':
+          return gradeQuiz(act.preguntas, entrega.respuestas, bank.preguntasCorrectas);
+        case 'video':
+          return gradeVideo(act.videoPreguntas, entrega.videoAnswers||entrega.videoRespuestas||entrega.respuestas, bank.videoCorrectas);
+        case 'juego':
+          return gradeJuego(act.juegoPares, entrega.juegoMatches||entrega.juegoRespuestas);
+        case 'caso':
+          return gradeCaso(act.casoPreguntas, entrega.casoRespuestas, bank.casoRespuestasCorrectas);
+        case 'foro':
+          return gradeForo(entrega.texto);
+        case 'tarea':
+          return gradeTarea(entrega.archivo, entrega.texto);
+        case 'mapa':
+        case 'infografia':
+        case 'debate':
+        case 'pares':
+          return 10;
+        default:
+          return 10;
+      }
+    }catch(e){ console.error('grade error',e); return null; }
+  }
+
+  function calcModuloGrade(actividades, moduloId, alumnoId){
+    const acts = actividades.filter(a=>a.moduloId===moduloId);
+    if(!acts.length) return 0;
+    const cals = acts.map(a=>{
+      const ent = a.entregas.find(e=>e.alumnoId===alumnoId);
+      return ent && ent.cal!==-1 ? ent.cal : null;
+    }).filter(c=>c!==null);
+    if(!cals.length) return 0;
+    return Math.round((cals.reduce((a,b)=>a+b,0)/cals.length)*10)/10;
+  }
+  function calcFinalGrade(clase, alumnoId){
+    if(!clase.modulos.length) return 0;
+    const mods = clase.modulos.map(m=>calcModuloGrade(clase.actividades, m.id, alumnoId)).filter(g=>g>0);
+    if(!mods.length) return 0;
+    return Math.round((mods.reduce((a,b)=>a+b,0)/mods.length)*10)/10;
+  }
+  function calcAvance(moduloId, actividades, alumnoId){
+    const acts = actividades.filter(a=>a.moduloId===moduloId);
+    if(!acts.length) return 0;
+    const hechas = acts.filter(a=>a.entregas.some(e=>e.alumnoId===alumnoId)).length;
+    return Math.round((hechas/acts.length)*100);
+  }
+
+  // --- AUTO-GRADING LOOP CADA 800ms ---
+  let lastHash='';
+  setInterval(()=>{
+    const subjects = getSubjects();
+    const bank = getCorrectBank();
+    const hash = JSON.stringify(subjects).length + '|' + JSON.stringify(bank).length;
+    if(hash===lastHash) return;
+    // check if any pending -1 needs grading
+    let changed=false;
+    subjects.forEach(clase=>{
+      clase.actividades.forEach(act=>{
+        act.entregas.forEach(ent=>{
+          if(ent.cal===-1 || ent.cal===null || ent._autoPending){
+            const newCal = autoGradeActivity(act, ent, bank);
+            if(newCal!==null && newCal!==-1){
+              ent.cal=newCal;
+              ent._autoGraded=true;
+              ent._autoPending=false;
+              changed=true;
+            }
+          } else {
+            // re-grade if bank changed for quiz/video/caso
+            if((act.tipo==='quiz'||act.tipo==='video'||act.tipo==='caso') && bank[act.id]){
+              const newCal = autoGradeActivity(act, ent, bank);
+              if(newCal!==null && Math.abs(newCal-ent.cal)>0.1){
+                ent.cal=newCal;
+                ent._autoGraded=true;
+                changed=true;
+              }
+            }
+          }
+        });
+      });
+    });
+    if(changed){
+      saveSubjects(subjects);
+      lastHash='';
+      // disparar evento para que React recargue si es posible
+      try{ window.dispatchEvent(new CustomEvent('ceut-grades-updated')); }catch(e){}
+      renderFloatingBadge();
+    } else {
+      lastHash=hash;
+    }
+  }, 800);
+
+  // --- UI: PANEL DE CALIFICACIONES FLOTANTE ---
+  function createStyles(){
+    if(document.getElementById('ceut-grade-styles')) return;
+    const s=document.createElement('style');
+    s.id='ceut-grade-styles';
+    s.textContent=`
+      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&display=swap');
+      #ceut-float-btn{position:fixed;bottom:20px;right:20px;z-index:9999;background:#150D33;color:#FFB800;border:3px solid #FFB800;border-radius:999px;padding:12px 18px;font-family:'Outfit';font-weight:800;font-size:12px;letter-spacing:0.05em;box-shadow:0 12px 24px -6px rgba(21,13,51,0.4);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s}
+      #ceut-float-btn:hover{transform:scale(1.05);background:#FFB800;color:#150D33}
+      #ceut-modal{position:fixed;inset:0;z-index:10000;background:rgba(21,13,51,0.7);backdrop-filter:blur(8px);display:none;place-items:center;padding:16px}
+      #ceut-modal.open{display:grid}
+      #ceut-modal-box{width:100%;max-width:980px;max-height:90vh;overflow:auto;background:#FFFEF7;border:3px solid #150D33;border-radius:24px;box-shadow:0 30px 80px -20px rgba(0,0,0,0.6)}
+      .ceut-tab{padding:8px 14px;border-radius:999px;font-weight:800;font-size:11px;cursor:pointer;border:2px solid transparent}
+      .ceut-tab.active{background:#150D33;color:#FFB800;border-color:#150D33}
+      .ceut-card{background:white;border:2px solid rgba(21,13,51,0.1);border-radius:16px;padding:14px}
+      .ceut-progress{height:8px;background:#F6F3FF;border-radius:999px;overflow:hidden}
+      .ceut-progress>div{height:100%;background:linear-gradient(90deg,#FFB800,#FF8A00);transition:width 0.4s}
+    `;
+    document.head.appendChild(s);
+  }
+
+  function renderFloatingBadge(){
+    createStyles();
+    let btn=document.getElementById('ceut-float-btn');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.id='ceut-float-btn';
+      btn.innerHTML='📊 CALIFICACIONES • AUTO';
+      btn.onclick=()=>openModal();
+      document.body.appendChild(btn);
+    }
+    // actualizar contador si hay nuevas
+    const subjects=getSubjects();
+    const users=getUsers();
+    const currentUser = (()=>{ try{ return JSON.parse(localStorage.getItem('ceut_current_user')||'null') }catch{return null} })() || users[0];
+    // no hacemos mas
+  }
+
+  let currentTab='alumno';
+  function openModal(){
+    createStyles();
+    let modal=document.getElementById('ceut-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='ceut-modal';
+      modal.innerHTML=`<div id="ceut-modal-box"></div>`;
+      modal.addEventListener('click',(e)=>{ if(e.target===modal) closeModal(); });
+      document.body.appendChild(modal);
+    }
+    modal.classList.add('open');
+    renderModalContent();
+  }
+  function closeModal(){ const m=document.getElementById('ceut-modal'); if(m) m.classList.remove('open'); }
+  window.ceutCloseModal=closeModal;
+  window.ceutOpenModal=openModal;
+
+  function renderModalContent(){
+    const box=document.getElementById('ceut-modal-box');
+    const subjects=getSubjects();
+    const users=getUsers();
+    const bank=getCorrectBank();
+    // intentar detectar usuario actual desde localStorage que usa la app original
+    let currentUser=null;
+    try{
+      const raw=localStorage.getItem('ceut_users_v2');
+      // la app guarda m en state, no en LS como current, pero podemos buscar ultimo login?
+      // usaremos el primer docente como demo si no hay
+      // mejor: buscar en sessionStorage o intentar leer de window
+      currentUser = window.__CEUT_CURRENT_USER__ || null;
+    }catch{}
+    // Si no, mostrar selector
+    const isDocente = true; // mostramos ambas vistas
+
+    box.innerHTML=`
+      <div style="padding:20px 24px;border-bottom:3px solid #150D33;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#FFFEF7;z-index:2;border-radius:24px 24px 0 0">
+        <div>
+          <div style="font-family:Outfit;font-weight:800;font-size:18px;color:#150D33;letter-spacing:-0.02em">SISTEMA DE CALIFICACIÓN AUTOMÁTICA 🎯</div>
+          <div style="font-size:10px;font-weight:700;color:rgba(21,13,51,0.6);letter-spacing:0.15em;margin-top:2px">TU CÓDIGO INTACTO • CAPA DE CALIFICACIÓN PERFECTA</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:6px;background:#F6F3FF;border-radius:999px;padding:4px;border:2px solid rgba(21,13,51,0.08)">
+            <button class="ceut-tab ${currentTab==='alumno'?'active':''}" onclick="window.ceutSwitchTab('alumno')">ESTUDIANTE</button>
+            <button class="ceut-tab ${currentTab==='docente'?'active':''}" onclick="window.ceutSwitchTab('docente')">DOCENTE • BANCO RESPUESTAS</button>
+            <button class="ceut-tab ${currentTab==='final'?'active':''}" onclick="window.ceutSwitchTab('final')">FINAL POR MÓDULOS</button>
+          </div>
+          <button onclick="window.ceutCloseModal()" style="width:32px;height:32px;border-radius:999px;background:#150D33;color:white;display:grid;place-items:center;font-weight:800">✕</button>
+        </div>
+      </div>
+      <div id="ceut-modal-content" style="padding:20px"></div>
+    `;
+
+    window.ceutSwitchTab=(t)=>{ currentTab=t; renderModalContent(); };
+
+    const content=document.getElementById('ceut-modal-content');
+
+    if(currentTab==='alumno'){
+      // Vista alumno: mostrar todas las clases y calificaciones
+      let html=`<div style="display:grid;gap:16px">`;
+      subjects.forEach(clase=>{
+        const alumnos = users.filter(u=>clase.inscritos.includes(u.id)||clase.id && u.clases.includes(clase.id));
+        html+=`<div class="ceut-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-weight:800;font-size:14px;color:#150D33">${clase.nombre} • ${clase.clave}</div>
+              <div style="font-size:10px;font-weight:700;color:rgba(21,13,51,0.5)">${clase.modulos.length} MÓDULOS • ${clase.actividades.length} ACTIVIDADES</div>
+            </div>
+            <div style="font-size:10px;font-weight:800;background:#FFB800;color:#150D33;padding:6px 10px;border-radius:999px">${alumnos.length} ALUMNOS</div>
+          </div>
+          <div style="margin-top:14px;display:grid;gap:12px">
+            ${alumnos.map(al=>{
+              const finalGrade = calcFinalGrade(clase, al.id);
+              const color = finalGrade>=8?'#10B981':finalGrade>=6?'#F59E0B':'#EF4444';
+              return `<div style="border:2px solid rgba(21,13,51,0.08);border-radius:14px;padding:12px;background:#FFFEF7">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="font-weight:800;font-size:12px;color:#150D33">${al.nombre}</div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="font-size:10px;font-weight:700;color:rgba(21,13,51,0.6)">FINAL</div>
+                    <div style="width:44px;height:44px;border-radius:999px;display:grid;place-items:center;font-weight:800;color:white;background:${color};border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,0.15)">${finalGrade.toFixed(1)}</div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+                  ${clase.modulos.map(mod=>{
+                    const grade = calcModuloGrade(clase.actividades, mod.id, al.id);
+                    const avance = calcAvance(mod.id, clase.actividades, al.id);
+                    const acts = clase.actividades.filter(a=>a.moduloId===mod.id);
+                    return `<div style="background:white;border:2px solid rgba(21,13,51,0.06);border-radius:12px;padding:10px">
+                      <div style="font-weight:800;font-size:11px;color:#150D33">M${mod.orden} • ${mod.titulo}</div>
+                      <div class="ceut-progress" style="margin-top:6px"><div style="width:${avance}%"></div></div>
+                      <div style="margin-top:6px;display:flex;justify-content:space-between;font-size:9px;font-weight:700;color:rgba(21,13,51,0.6)"><span>${avance}% AVANCE</span><span style="color:${grade>=8?'#10B981':grade>=6?'#F59E0B':'#EF4444'};font-weight:800">${grade.toFixed(1)}/10 PROM</span></div>
+                      <div style="margin-top:8px;display:grid;gap:4px">
+                        ${acts.map(a=>{
+                          const ent = a.entregas.find(e=>e.alumnoId===al.id);
+                          const cal = ent ? ent.cal : null;
+                          const estado = !ent ? 'PENDIENTE' : ent.cal===-1?'POR CALIFICAR':'CALIFICADO';
+                          const bg = !ent ? '#F6F3FF' : ent.cal===-1 ? '#FFFBEB' : '#ECFDF5';
+                          return `<div style="display:flex;justify-content:space-between;align-items:center;background:${bg};border-radius:8px;padding:6px 8px">
+                            <span style="font-size:9px;font-weight:700;color:#150D33;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${a.titulo}</span>
+                            <span style="font-size:9px;font-weight:800;padding:3px 6px;border-radius:999px;background:${cal!==null&&cal!==-1?'#150D33':'rgba(21,13,51,0.1)'};color:${cal!==null&&cal!==-1?'#FFB800':'#150D33'}">${cal!==null&&cal!==-1?cal+'/10':estado}</span>
+                          </div>`;
+                        }).join('')}
+                      </div>
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      });
+      html+=`</div>`;
+      content.innerHTML=html;
+    } else if(currentTab==='docente'){
+      // Vista docente: banco de respuestas correctas
+      let html=`<div style="display:grid;gap:12px">
+        <div style="background:#150D33;color:#FFB800;border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-weight:800;font-size:13px">BANCO DE RESPUESTAS CORRECTAS • EDITA AQUÍ</div>
+            <div style="font-size:10px;font-weight:600;opacity:0.8;margin-top:2px">CADA CAMBIO RE-CALIFICA AUTOMÁTICAMENTE A TODOS LOS ALUMNOS • SE GUARDA EN LOCALSTORAGE</div>
+          </div>
+          <button onclick="window.ceutExportGrades()" style="background:#FFB800;color:#150D33;border-radius:999px;padding:8px 14px;font-weight:800;font-size:11px">EXPORTAR CALIFICACIONES CSV</button>
+        </div>
+      `;
+
+      subjects.forEach(clase=>{
+        html+=`<div class="ceut-card" style="border-color:#FFB800">
+          <div style="font-weight:800;font-size:14px;color:#150D33;margin-bottom:12px">${clase.nombre} • ${clase.clave}</div>
+          ${clase.actividades.map(act=>{
+            const bank = (bank[act.id]||{});
+            if(act.tipo==='quiz'){
+              return `<div style="border:2px solid rgba(21,13,51,0.1);border-radius:12px;padding:12px;margin-bottom:10px;background:#FFFEF7">
+                <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;font-size:11px">📝 ${act.titulo} • QUIZ • ${act.preguntas.length} PREGUNTAS • ${act.puntos} PTS</div><div style="font-size:9px;font-weight:700;background:#10B981;color:white;padding:4px 8px;border-radius:999px">AUTO-CALIFICADO</div></div>
+                <div style="margin-top:10px;display:grid;gap:8px">
+                  ${act.preguntas.map((p,i)=>{
+                    const currentCorrect = bank.preguntasCorrectas && bank.preguntasCorrectas[i]!==undefined ? bank.preguntasCorrectas[i] : p.correcta;
+                    return `<div style="background:white;border-radius:10px;padding:10px;border:2px solid rgba(21,13,51,0.06)">
+                      <div style="font-weight:800;font-size:11px;color:#150D33">${i+1}. ${p.pregunta}</div>
+                      <div style="margin-top:6px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+                        ${p.opciones.map((op,j)=>`<label style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;border:2px solid ${currentCorrect===j?'#10B981':'rgba(21,13,51,0.1)'};background:${currentCorrect===j?'#ECFDF5':'white'};cursor:pointer">
+                          <input type="radio" name="correct-${act.id}-${i}" ${currentCorrect===j?'checked':''} onchange="window.ceutSetCorrect('${act.id}','quiz',${i},${j})" />
+                          <span style="font-size:10px;font-weight:700">${String.fromCharCode(65+j)}. ${op}</span>
+                        </label>`).join('')}
+                      </div>
+                      <div style="margin-top:6px;font-size:9px;font-weight:600;color:rgba(21,13,51,0.5)">RETRO: ${p.retro||'Sin retro'}</div>
+                    </div>`;
+                  }).join('')}
+                </div>
+                <div style="margin-top:8px;font-size:9px;font-weight:700;color:#10B981">✅ Al cambiar la respuesta correcta, TODOS los alumnos se recalculan automáticamente a 0-10</div>
+              </div>`;
+            } else if(act.tipo==='video'){
+              return `<div style="border:2px solid rgba(220,38,38,0.2);border-radius:12px;padding:12px;margin-bottom:10px;background:#FEF2F2">
+                <div style="font-weight:800;font-size:11px;color:#DC2626">🎥 ${act.titulo} • VIDEO INTERACTIVO • ${act.videoPreguntas?.length||0} PREGUNTAS</div>
+                <div style="margin-top:10px;display:grid;gap:8px">
+                  ${(act.videoPreguntas||[]).map((p,i)=>{
+                    const currentCorrect = bank.videoCorrectas && bank.videoCorrectas[i]!==undefined ? bank.videoCorrectas[i] : p.correcta;
+                    return `<div style="background:white;border-radius:10px;padding:10px">
+                      <div style="font-weight:700;font-size:11px">${p.tiempo} • ${p.pregunta}</div>
+                      <div style="margin-top:6px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+                        ${p.opciones.map((op,j)=>`<label style="display:flex;gap:6px;padding:6px;border-radius:8px;border:2px solid ${currentCorrect===j?'#DC2626':'rgba(21,13,51,0.1)'};background:${currentCorrect===j?'#FEF2F2':'white'};cursor:pointer"><input type="radio" name="vcorrect-${act.id}-${i}" ${currentCorrect===j?'checked':''} onchange="window.ceutSetCorrect('${act.id}','video',${i},${j})" /><span style="font-size:10px;font-weight:700">${op}</span></label>`).join('')}
+                      </div>
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            } else if(act.tipo==='caso'){
+              return `<div style="border:2px solid rgba(124,58,237,0.2);border-radius:12px;padding:12px;margin-bottom:10px;background:#F5F3FF">
+                <div style="font-weight:800;font-size:11px;color:#7C3AED">📂 ${act.titulo} • CASO PRÁCTICO • ${act.casoPreguntas?.length||0} PREGUNTAS ABIERTAS</div>
+                <div style="font-size:9px;font-weight:600;color:rgba(21,13,51,0.6);margin-top:4px">DEFINE LAS RESPUESTAS CORRECTAS ESPERADAS (palabras clave) PARA AUTO-CALIFICAR. Si no defines, se califica 10 por entregar.</div>
+                <div style="margin-top:10px;display:grid;gap:8px">
+                  ${(act.casoPreguntas||[]).map((preg,i)=>{
+                    const val = bank.casoRespuestasCorrectas && bank.casoRespuestasCorrectas[i] || '';
+                    return `<div style="background:white;border-radius:10px;padding:10px"><div style="font-weight:700;font-size:11px">${i+1}. ${preg}</div><textarea placeholder="Respuesta correcta esperada o palabras clave separadas por espacio..." oninput="window.ceutSetCasoCorrect('${act.id}',${i},this.value)" style="margin-top:6px;width:100%;border:2px solid rgba(21,13,51,0.1);border-radius:8px;padding:8px;font-size:11px;min-height:60px">${val}</textarea></div>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            } else if(act.tipo==='juego'){
+              return `<div style="border:2px solid rgba(124,58,237,0.15);border-radius:12px;padding:12px;margin-bottom:10px;background:#F5F3FF">
+                <div style="font-weight:800;font-size:11px;color:#7C3AED">🎮 ${act.titulo} • JUEGO ARRASTRA • ${act.juegoPares?.length||0} PARES</div>
+                <div style="margin-top:8px;display:grid;gap:6px">
+                  ${(act.juegoPares||[]).map(p=>`<div style="display:flex;justify-content:space-between;background:white;padding:8px;border-radius:8px;font-size:10px;font-weight:700"><span>${p.concepto}</span><span style="color:#10B981">→ ${p.definicion}</span></div>`).join('')}
+                </div>
+                <div style="margin-top:6px;font-size:9px;font-weight:700;color:#10B981">✅ Auto-calificado: 10 si completa todos los pares</div>
+              </div>`;
+            } else {
+              return `<div style="border:2px solid rgba(21,13,51,0.06);border-radius:12px;padding:10px;margin-bottom:8px;background:white;display:flex;justify-content:space-between;align-items:center"><div style="font-weight:700;font-size:11px">${act.tipo.toUpperCase()} • ${act.titulo} • ${act.puntos} PTS</div><div style="font-size:9px;font-weight:800;background:#ECFDF5;color:#059669;padding:4px 8px;border-radius:999px">AUTO 10 AL ENTREGAR</div></div>`;
+            }
+          }).join('')}
+        </div>`;
+      });
+      html+=`</div>`;
+      content.innerHTML=html;
+    } else if(currentTab==='final'){
+      let html=`<div style="display:grid;gap:16px">`;
+      subjects.forEach(clase=>{
+        html+=`<div class="ceut-card" style="background:#150D33;color:white;border-color:#150D33">
+          <div style="font-weight:800;font-size:16px;color:#FFB800">${clase.nombre} • CALIFICACIÓN FINAL POR MÓDULOS</div>
+          <div style="margin-top:12px;display:grid;gap:12px">
+            ${clase.modulos.map(mod=>{
+              const acts = clase.actividades.filter(a=>a.moduloId===mod.id);
+              const totalPuntos = acts.reduce((s,a)=>s+a.puntos,0);
+              return `<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:800;font-size:13px;color:#FFB800">M${mod.orden} • ${mod.titulo}</div><div style="font-size:10px;opacity:0.7;margin-top:2px">${mod.objetivo} • ${acts.length} acts • ${totalPuntos} pts totales</div></div></div>
+                <div style="margin-top:12px;display:grid;gap:8px">
+                  ${getUsers().filter(u=>clase.inscritos.includes(u.id)||u.clases.includes(clase.id)).map(al=>{
+                    const grade = calcModuloGrade(clase.actividades, mod.id, al.id);
+                    const avance = calcAvance(mod.id, clase.actividades, al.id);
+                    const color = grade>=8?'#10B981':grade>=6?'#F59E0B':'#EF4444';
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;background:white;color:#150D33;border-radius:10px;padding:10px 12px"><div><div style="font-weight:800;font-size:11px">${al.nombre}</div><div style="font-size:9px;color:rgba(21,13,51,0.6)">${avance}% avance • ${acts.filter(a=>a.entregas.some(e=>e.alumnoId===al.id)).length}/${acts.length} entregas</div></div><div style="display:flex;align-items:center;gap:8px"><div style="width:36px;height:36px;border-radius:999px;background:${color};color:white;display:grid;place-items:center;font-weight:800;font-size:12px">${grade.toFixed(1)}</div></div></div>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="margin-top:16px;background:#FFB800;color:#150D33;border-radius:14px;padding:14px">
+            <div style="font-weight:800;font-size:13px">🏆 CALIFICACIÓN FINAL DEL CURSO (PROMEDIO DE MÓDULOS)</div>
+            <div style="margin-top:10px;display:grid;gap:8px">
+              ${getUsers().filter(u=>clase.inscritos.includes(u.id)||u.clases.includes(clase.id)).map(al=>{
+                const final = calcFinalGrade(clase, al.id);
+                const color = final>=8?'#10B981':final>=6?'#F59E0B':'#EF4444';
+                return `<div style="display:flex;justify-content:space-between;align-items:center;background:white;border-radius:10px;padding:10px 12px"><span style="font-weight:800;font-size:12px;color:#150D33">${al.nombre}</span><span style="background:${color};color:white;padding:6px 12px;border-radius:999px;font-weight:800;font-size:13px">${final.toFixed(1)}/10</span></div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>`;
+      });
+      html+=`</div>`;
+      content.innerHTML=html;
+    }
+  }
+
+  window.ceutSetCorrect=(actId, tipo, pregIdx, correctaIdx)=>{
+    const bank=getCorrectBank();
+    if(!bank[actId]) bank[actId]={};
+    if(tipo==='quiz'){
+      if(!bank[actId].preguntasCorrectas) bank[actId].preguntasCorrectas={};
+      bank[actId].preguntasCorrectas[pregIdx]=correctaIdx;
+    } else if(tipo==='video'){
+      if(!bank[actId].videoCorrectas) bank[actId].videoCorrectas={};
+      bank[actId].videoCorrectas[pregIdx]=correctaIdx;
+    }
+    saveCorrectBank(bank);
+    renderModalContent();
+    // forzar re-grade inmediato
+    const subjects=getSubjects();
+    subjects.forEach(clase=>{
+      clase.actividades.forEach(act=>{
+        if(act.id===actId){
+          act.entregas.forEach(ent=>{
+            const newCal=autoGradeActivity(act, ent, bank);
+            if(newCal!==null) ent.cal=newCal;
+          });
+        }
+      });
+    });
+    saveSubjects(subjects);
+  };
+
+  window.ceutSetCasoCorrect=(actId, idx, texto)=>{
+    const bank=getCorrectBank();
+    if(!bank[actId]) bank[actId]={};
+    if(!bank[actId].casoRespuestasCorrectas) bank[actId].casoRespuestasCorrectas={};
+    bank[actId].casoRespuestasCorrectas[idx]=texto;
+    saveCorrectBank(bank);
+    // auto re-grade
+    const subjects=getSubjects();
+    subjects.forEach(clase=>{
+      clase.actividades.forEach(act=>{
+        if(act.id===actId){
+          act.entregas.forEach(ent=>{
+            const newCal=autoGradeActivity(act, ent, bank);
+            if(newCal!==null) ent.cal=newCal;
+          });
+        }
+      });
+    });
+    saveSubjects(subjects);
+  };
+
+  window.ceutExportGrades=()=>{
+    const subjects=getSubjects();
+    const users=getUsers();
+    let csv="Curso,Clave,Modulo,Actividad,Tipo,Alumno,Correo,Calificacion,Estado,Fecha Entrega,Avance Modulo,Promedio Modulo,Final Curso\n";
+    subjects.forEach(clase=>{
+      clase.modulos.forEach(mod=>{
+        clase.actividades.filter(a=>a.moduloId===mod.id).forEach(act=>{
+          users.filter(u=>clase.inscritos.includes(u.id)||u.clases.includes(clase.id)).forEach(al=>{
+            const ent=act.entregas.find(e=>e.alumnoId===al.id);
+            const cal=ent?ent.cal:'';
+            const estado=!ent?'PENDIENTE':ent.cal===-1?'POR CALIFICAR':'CALIFICADO';
+            const fecha=ent?ent.fecha:'';
+            const avance=calcAvance(mod.id, clase.actividades, al.id);
+            const promMod=calcModuloGrade(clase.actividades, mod.id, al.id);
+            const final=calcFinalGrade(clase, al.id);
+            csv+=`"${clase.nombre}","${clase.clave}","${mod.titulo}","${act.titulo}","${act.tipo}","${al.nombre}","${al.correo}","${cal}","${estado}","${fecha}","${avance}%","${promMod}","${final}"\n`;
+          });
+        });
+      });
+    });
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`calificaciones_CEUT_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+  };
+
+  // Inicializar
+  createStyles();
+  renderFloatingBadge();
+  // Exponer funciones globales para debug
+  window.CEUT_Grader={
+    autoGradeActivity,
+    calcModuloGrade,
+    calcFinalGrade,
+    getSubjects,
+    getCorrectBank
+  };
+
+  // Intentar detectar usuario actual del React app y exponerlo
+  setTimeout(()=>{
+    // buscar en localStorage ceut_current_user si existe
+    console.log('%c CEUT AUTO-CALIFICACIÓN ACTIVA ✅ ','background:#150D33;color:#FFB800;font-weight:800;padding:6px 12px;border-radius:8px');
+    console.log('Funciones: window.CEUT_Grader, window.ceutOpenModal()');
+  },1000);
+
+})();
+</script>
+
 </body>
 </html>
