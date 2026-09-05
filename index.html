@@ -119,11 +119,7 @@ try{
 }
 </script>
 <!-- Indicador nube sutil - mismo diseño -->
-<div id="ceut-cloud-indicator" style="position:fixed;bottom:16px;right:16px;z-index:9999;background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:999px;padding:6px 12px;font-family:Outfit;font-weight:800;font-size:9px;letter-spacing:0.1em;box-shadow:0 8px 24px -6px rgba(21,13,51,0.3);">☁️ CONECTANDO NUBE...</div>
-<script>
-// Ocultar indicador después de 5s, sin alterar diseño principal
-setTimeout(()=>{const el=document.getElementById('ceut-cloud-indicator'); if(el){ el.style.opacity='0.7'; }}, 5000);
-</script>
+
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -200,5 +196,46 @@ Error generating stack: `+u.message+`
 </script>
   <script>(function(){function m(a){var h=a.getAttribute("href");if(!h)return;try{var u=new URL(h,document.baseURI);if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){a.target="_blank";a.rel="noopener noreferrer";}}catch(e){}}function s(){document.querySelectorAll("a[href]").forEach(m);}if(document.readyState!=="loading"){s();}else{document.addEventListener("DOMContentLoaded",s);}document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(a){m(a);}},true);})();</script>
   
+
+<script type="module">
+import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+async function verificarNube(){
+  const db = window.__CEUT_DB__;
+  if(!db) {
+    document.getElementById('ceut-verify-nube').innerHTML = '❌ NUBE NO CONECTADA - Firebase no inicializó';
+    return;
+  }
+  try{
+    const usersSnap = await getDoc(doc(db, "ceut_data", "users"));
+    const subjectsSnap = await getDoc(doc(db, "ceut_data", "subjects"));
+    const usersCount = usersSnap.exists() ? usersSnap.data().data.length : 0;
+    const subjectsCount = subjectsSnap.exists() ? subjectsSnap.data().data.length : 0;
+    const lastUpdate = usersSnap.exists() ? (usersSnap.data().updatedAt || 'nunca') : 'nunca';
+    
+    document.getElementById('ceut-verify-nube').innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;background:#10B981;border-radius:999px;box-shadow:0 0 0 3px rgba(16,185,129,0.2);animation:pulse 2s infinite"></div>
+        <span>☁️ NUBE CONECTADA • Proyecto: mixto-ceut</span>
+      </div>
+      <div style="margin-top:6px;font-size:8px;opacity:0.8">
+        👥 ${usersCount} usuarios en nube • 📚 ${subjectsCount} clases en nube • 🕒 ${lastUpdate}<br>
+        Abre consola F12 para ver logs • Abre en otro dispositivo y verás los mismos datos
+      </div>
+    `;
+  }catch(e){
+    document.getElementById('ceut-verify-nube').innerHTML = '⚠️ NUBE: Error ' + e.message;
+  }
+}
+setTimeout(verificarNube, 3000);
+setInterval(verificarNube, 10000);
+</script>
+<style>
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)}70%{box-shadow:0 0 0 6px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+</style>
+<div id="ceut-verify-nube" style="position:fixed;bottom:16px;right:16px;z-index:99999;background:#150D33;color:#FFB800;border:2px solid #10B981;border-radius:16px;padding:10px 14px;font-family:Outfit;font-weight:800;font-size:9px;letter-spacing:0.05em;box-shadow:0 12px 32px -8px rgba(21,13,51,0.4);min-width:220px">
+  ☁️ VERIFICANDO NUBE...
+</div>
+
 </body>
 </html>
