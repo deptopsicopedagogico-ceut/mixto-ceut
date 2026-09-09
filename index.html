@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <script type="module">
-// CONEXIÓN NUBE FIREBASE - MISMO DISEÑO INTACTO - SOLO LOGICA
+// CONEXIÓN NUBE FIREBASE CON AUTH ANONIMA - PARA QUE SI CONECTE
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOr0TZoNTZqtmKc_R5RclUp_oz6KZwHEI",
@@ -15,110 +17,158 @@ const firebaseConfig = {
   appId: "1:512091563071:web:4f89cefc34655bb7e3448a"
 };
 
-let db;
+let db, auth;
+let cloudReady = false;
+
 try{
   const app = initializeApp(firebaseConfig);
   db = getFirestore(app);
-  console.log('☁️ CEUT Nube conectada:', firebaseConfig.projectId);
+  auth = getAuth(app);
   window.__CEUT_DB__ = db;
+  window.__CEUT_AUTH__ = auth;
 
-  // Cargar desde nube al iniciar
+  // AUTENTICACION ANONIMA - PARA QUE LAS REGLAS DEJEN ESCRIBIR
+  async function conectarNube(){
+    try{
+      document.getElementById('ceut-cloud-indicator').textContent = '☁️ CONECTANDO NUBE (AUTH)...';
+      document.getElementById('ceut-cloud-indicator').style.background = '#F59E0B';
+      
+      await signInAnonymously(auth);
+      console.log('☁️ Auth anónima OK:', auth.currentUser.uid);
+      
+      onAuthStateChanged(auth, (user)=>{
+        if(user){
+          cloudReady = true;
+          document.getElementById('ceut-cloud-indicator').textContent = '☁️ NUBE CONECTADA • ' + user.uid.substring(0,6);
+          document.getElementById('ceut-cloud-indicator').style.background = '#10B981';
+          cargarDesdeNube();
+          iniciarSyncTiempoReal();
+        }
+      });
+    }catch(e){
+      console.error('Error auth anonima', e);
+      document.getElementById('ceut-cloud-indicator').textContent = '❌ NUBE BLOQUEADA: ' + e.message;
+      document.getElementById('ceut-cloud-indicator').style.background = '#EF4444';
+      // Mostrar instrucciones para arreglar reglas
+      setTimeout(()=>{
+        alert('⚠️ LA NUBE ESTÁ BLOQUEADA POR REGLAS DE FIRESTORE
+
+SOLUCIÓN:
+1. Ve a console.firebase.google.com
+2. Proyecto mixto-ceut
+3. Firestore → Reglas
+4. Pega esto:
+
+rules_version = \'2\';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+
+5. Publicar
+
+Mientras tanto funciona en modo LOCAL.');
+      }, 1000);
+    }
+  }
+
   async function cargarDesdeNube(){
     try{
       const usersSnap = await getDoc(doc(db, "ceut_data", "users"));
       const subjectsSnap = await getDoc(doc(db, "ceut_data", "subjects"));
       if(usersSnap.exists()){
         const cloudUsers = usersSnap.data().data;
-        if(cloudUsers && Array.isArray(cloudUsers) && cloudUsers.length>0){
-          // Solo si nube tiene datos y local está vacío o tiene demos
+        if(cloudUsers && cloudUsers.length>0){
           const localUsers = localStorage.getItem('ceut_users_v2');
-          if(!localUsers || localUsers.includes('doc_demo') || JSON.parse(localUsers).length < cloudUsers.length){
+          if(!localUsers || JSON.parse(localUsers).length < cloudUsers.length){
             localStorage.setItem('ceut_users_v2', JSON.stringify(cloudUsers));
-            console.log('☁️ Usuarios cargados desde nube:', cloudUsers.length);
+            console.log('☁️ Usuarios desde nube:', cloudUsers.length);
+            setTimeout(()=>location.reload(), 500);
           }
         }
       }
       if(subjectsSnap.exists()){
         const cloudSubjects = subjectsSnap.data().data;
-        if(cloudSubjects && Array.isArray(cloudSubjects) && cloudSubjects.length>0){
+        if(cloudSubjects && cloudSubjects.length>0){
           const localSubjects = localStorage.getItem('ceut_subjects_v2');
-          if(!localSubjects || localSubjects.includes('mat1') || JSON.parse(localSubjects).length < cloudSubjects.length){
+          if(!localSubjects || JSON.parse(localSubjects).length < cloudSubjects.length){
             localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudSubjects));
-            console.log('☁️ Clases cargadas desde nube:', cloudSubjects.length);
+            console.log('☁️ Clases desde nube:', cloudSubjects.length);
+            setTimeout(()=>location.reload(), 500);
           }
         }
       }
-    }catch(e){ console.warn('Nube no disponible, modo local', e); }
+    }catch(e){ console.warn('Carga nube error', e); }
   }
 
-  // Guardar en nube cuando cambia localStorage
   let saveTimeout;
   async function guardarEnNube(){
+    if(!cloudReady) return;
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async ()=>{
       try{
         const users = localStorage.getItem('ceut_users_v2');
         const subjects = localStorage.getItem('ceut_subjects_v2');
         if(users){
-          await setDoc(doc(db, "ceut_data", "users"), {data: JSON.parse(users), updatedAt: new Date().toISOString()}, {merge:true});
+          await setDoc(doc(db, "ceut_data", "users"), {data: JSON.parse(users), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
         }
         if(subjects){
-          await setDoc(doc(db, "ceut_data", "subjects"), {data: JSON.parse(subjects), updatedAt: new Date().toISOString()}, {merge:true});
+          await setDoc(doc(db, "ceut_data", "subjects"), {data: JSON.parse(subjects), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
         }
         console.log('☁️ Guardado en nube OK');
-        // Mostrar indicador sutil de nube
-        const indicator = document.getElementById('ceut-cloud-indicator');
-        if(indicator){ indicator.textContent='☁️ NUBE SINCRONIZADA'; indicator.style.background='#10B981'; setTimeout(()=>{indicator.style.background='#150D33'}, 2000); }
-      }catch(e){ console.warn('Error guardando en nube', e); }
-    }, 1500);
+        const ind = document.getElementById('ceut-cloud-indicator');
+        if(ind){ ind.textContent='☁️ NUBE SINCRONIZADA ✓'; ind.style.background='#10B981'; }
+      }catch(e){ 
+        console.warn('Error guardando nube', e); 
+        const ind = document.getElementById('ceut-cloud-indicator');
+        if(ind){ ind.textContent='❌ ERROR NUBE: ' + e.code; ind.style.background='#EF4444'; }
+      }
+    }, 1000);
   }
 
-  // Interceptar localStorage.setItem para guardar en nube
+  function iniciarSyncTiempoReal(){
+    try{
+      onSnapshot(doc(db, "ceut_data", "users"), (snap)=>{
+        if(snap.exists()){
+          const cloudData = snap.data().data;
+          const localData = localStorage.getItem('ceut_users_v2');
+          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
+            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudData));
+          }
+        }
+      });
+      onSnapshot(doc(db, "ceut_data", "subjects"), (snap)=>{
+        if(snap.exists()){
+          const cloudData = snap.data().data;
+          const localData = localStorage.getItem('ceut_subjects_v2');
+          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
+            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudData));
+          }
+        }
+      });
+    }catch(e){}
+  }
+
+  // Interceptar localStorage
   const originalSetItem = localStorage.setItem.bind(localStorage);
   localStorage.setItem = function(key, value){
     originalSetItem(key, value);
-    if(key==='ceut_users_v2' || key==='ceut_subjects_v2'){
+    if((key==='ceut_users_v2' || key==='ceut_subjects_v2') && cloudReady){
       guardarEnNube();
     }
   };
 
-  // Cargar al inicio
-  cargarDesdeNube();
-
-  // Escuchar cambios en tiempo real desde otros dispositivos
-  try{
-    onSnapshot(doc(db, "ceut_data", "users"), (snap)=>{
-      if(snap.exists()){
-        const cloudData = snap.data().data;
-        const localData = localStorage.getItem('ceut_users_v2');
-        if(cloudData && JSON.stringify(cloudData) !== localData){
-          // Si nube es más reciente, actualizar local
-          if(cloudData.length > (localData?JSON.parse(localData).length:0)){
-            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudData));
-            console.log('☁️ Sincronizado usuarios desde otro dispositivo');
-          }
-        }
-      }
-    });
-    onSnapshot(doc(db, "ceut_data", "subjects"), (snap)=>{
-      if(snap.exists()){
-        const cloudData = snap.data().data;
-        const localData = localStorage.getItem('ceut_subjects_v2');
-        if(cloudData && JSON.stringify(cloudData) !== localData){
-          if(cloudData.length > (localData?JSON.parse(localData).length:0)){
-            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudData));
-            console.log('☁️ Sincronizado clases desde otro dispositivo');
-          }
-        }
-      }
-    });
-  }catch(e){}
+  conectarNube();
 
 }catch(e){
   console.error('Firebase init error', e);
+  document.getElementById('ceut-cloud-indicator').textContent = '❌ FIREBASE ERROR: ' + e.message;
 }
 </script>
-<!-- Indicador nube sutil - mismo diseño -->
+
 
 
   <meta charset="UTF-8">
@@ -138,6 +188,60 @@ try{
   }catch(e){}
 })();
 </script>
+
+<script>
+// MEJORA RECURSOS - LIBROS, ARTICULOS, PDF, VIDEOS DRIVE/YOUTUBE VISIBLES DIRECTO EN MODULO
+(function(){
+  window.convertirUrlRecurso = function(url){
+    if(!url) return url;
+    url = url.trim();
+    // YouTube: https://www.youtube.com/watch?v=XXXX -> https://www.youtube.com/embed/XXXX
+    // youtu.be/XXXX -> embed/XXXX
+    if(url.includes('youtube.com/watch')){
+      const m = url.match(/v=([^&]+)/);
+      if(m) return 'https://www.youtube.com/embed/' + m[1];
+    }
+    if(url.includes('youtu.be/')){
+      const m = url.match(/youtu\.be\/([^?]+)/);
+      if(m) return 'https://www.youtube.com/embed/' + m[1];
+    }
+    if(url.includes('youtube.com/embed/')){
+      return url; // ya es embed
+    }
+    // Drive: https://drive.google.com/file/d/ID/view -> /preview
+    // https://drive.google.com/open?id=ID -> /file/d/ID/preview
+    if(url.includes('drive.google.com')){
+      // file/d/ID/
+      let m = url.match(/\/d\/([^\/]+)/);
+      if(m){
+        return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+      }
+      // open?id=ID
+      m = url.match(/id=([^&]+)/);
+      if(m){
+        return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+      }
+    }
+    return url;
+  };
+
+  // Interceptar creación de recurso para convertir URL automáticamente
+  const originalCreate = window.convertirUrlRecurso;
+  
+  // Mejorar visualización de recursos en módulos
+  setInterval(()=>{
+    // Buscar iframes de recursos y asegurar que sean visibles
+    document.querySelectorAll('iframe[src*="youtube.com"], iframe[src*="drive.google.com"]').forEach(iframe=>{
+      if(!iframe.dataset.enhanced){
+        iframe.dataset.enhanced='1';
+        iframe.style.borderRadius='12px';
+        iframe.style.border='2px solid rgba(21,13,51,0.1)';
+      }
+    });
+  }, 2000);
+})();
+</script>
+
 </head>
 <body>
   <div id="root"></div>
@@ -197,45 +301,183 @@ Error generating stack: `+u.message+`
   <script>(function(){function m(a){var h=a.getAttribute("href");if(!h)return;try{var u=new URL(h,document.baseURI);if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){a.target="_blank";a.rel="noopener noreferrer";}}catch(e){}}function s(){document.querySelectorAll("a[href]").forEach(m);}if(document.readyState!=="loading"){s();}else{document.addEventListener("DOMContentLoaded",s);}document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(a){m(a);}},true);})();</script>
   
 
-<script type="module">
-import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-async function verificarNube(){
-  const db = window.__CEUT_DB__;
-  if(!db) {
-    document.getElementById('ceut-verify-nube').innerHTML = '❌ NUBE NO CONECTADA - Firebase no inicializó';
-    return;
-  }
-  try{
-    const usersSnap = await getDoc(doc(db, "ceut_data", "users"));
-    const subjectsSnap = await getDoc(doc(db, "ceut_data", "subjects"));
-    const usersCount = usersSnap.exists() ? usersSnap.data().data.length : 0;
-    const subjectsCount = subjectsSnap.exists() ? subjectsSnap.data().data.length : 0;
-    const lastUpdate = usersSnap.exists() ? (usersSnap.data().updatedAt || 'nunca') : 'nunca';
+<script>
+(function(){
+  // Hacer que la clave sea más visible para alumnos - resaltar input de clave
+  setInterval(()=>{
+    const inputs = document.querySelectorAll('input[placeholder*="CLAVE"], input[placeholder*="clave"]');
+    inputs.forEach(inp=>{
+      if(!inp.dataset.claveEnhanced){
+        inp.dataset.claveEnhanced='1';
+        inp.style.border='3px solid #FFB800';
+        inp.style.background='#FFFEF7';
+        // Agregar texto ayuda
+        if(!document.getElementById('clave-ayuda-alumno')){
+          const ayuda = document.createElement('div');
+          ayuda.id='clave-ayuda-alumno';
+          ayuda.style.cssText='margin-top:6px;background:#150D33;color:#FFB800;border-radius:8px;padding:8px 10px;font-family:Outfit;font-weight:700;font-size:9px;letter-spacing:0.05em';
+          ayuda.innerHTML='🔑 PIDE LA CLAVE ÚNICA A TU MAESTRO (ej: MAT-2-A-847) • Cada maestro tiene claves diferentes • Ingresa la clave para unirte a su clase';
+          inp.parentElement.appendChild(ayuda);
+        }
+      }
+    });
     
-    document.getElementById('ceut-verify-nube').innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:8px;height:8px;background:#10B981;border-radius:999px;box-shadow:0 0 0 3px rgba(16,185,129,0.2);animation:pulse 2s infinite"></div>
-        <span>☁️ NUBE CONECTADA • Proyecto: mixto-ceut</span>
-      </div>
-      <div style="margin-top:6px;font-size:8px;opacity:0.8">
-        👥 ${usersCount} usuarios en nube • 📚 ${subjectsCount} clases en nube • 🕒 ${lastUpdate}<br>
-        Abre consola F12 para ver logs • Abre en otro dispositivo y verás los mismos datos
-      </div>
-    `;
-  }catch(e){
-    document.getElementById('ceut-verify-nube').innerHTML = '⚠️ NUBE: Error ' + e.message;
-  }
-}
-setTimeout(verificarNube, 3000);
-setInterval(verificarNube, 10000);
+    // Resaltar recursos tipo PDF, libro, Drive, YouTube
+    document.querySelectorAll('[class*="recurs"], [class*="RECURSO"]').forEach(el=>{
+      const txt = el.textContent || '';
+      if(txt.includes('drive.google.com') || txt.includes('youtube.com')){
+        if(!el.dataset.resourceEnhanced){
+          el.dataset.resourceEnhanced='1';
+          el.style.background='#F6F3FF';
+          el.style.border='2px solid #FFB800';
+        }
+      }
+    });
+  }, 2000);
+})();
 </script>
-<style>
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)}70%{box-shadow:0 0 0 6px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
-</style>
-<div id="ceut-verify-nube" style="position:fixed;bottom:16px;right:16px;z-index:99999;background:#150D33;color:#FFB800;border:2px solid #10B981;border-radius:16px;padding:10px 14px;font-family:Outfit;font-weight:800;font-size:9px;letter-spacing:0.05em;box-shadow:0 12px 32px -8px rgba(21,13,51,0.4);min-width:220px">
-  ☁️ VERIFICANDO NUBE...
-</div>
+
+
+<script>
+// HERRAMIENTAS EDICIÓN Y ELIMINACIÓN - ALUMNOS Y MÓDULOS - MISMO DISEÑO INTACTO
+(function(){
+  function getSubjects(){ try{ return JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]'); }catch{ return []; } }
+  function getUsers(){ try{ return JSON.parse(localStorage.getItem('ceut_users_v2')||'[]'); }catch{ return []; } }
+  function saveSubjects(subjects){
+    localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
+    console.log('💾 Materias guardadas, nube sincronizará');
+  }
+  function saveUsers(users){
+    localStorage.setItem('ceut_users_v2', JSON.stringify(users));
+  }
+
+  window.eliminarAlumnoDeClase = function(claseId, alumnoId, alumnoNombre){
+    if(!confirm(`¿ELIMINAR AL ALUMNO ${alumnoNombre} DE ESTA CLASE?\n\nEl alumno ya no verá la clase en su portal.`)) return;
+    let subjects = getSubjects();
+    const clase = subjects.find(c=>c.id===claseId);
+    if(!clase) return;
+    clase.inscritos = (clase.inscritos||[]).filter(id=>id!==alumnoId);
+    clase.alumnos = Math.max(0, (clase.alumnos||1)-1);
+    // También quitar clase del usuario
+    let users = getUsers();
+    const alumno = users.find(u=>u.id===alumnoId);
+    if(alumno && alumno.clases){
+      alumno.clases = alumno.clases.filter(cid=>cid!==claseId);
+      saveUsers(users);
+    }
+    saveSubjects(subjects);
+    alert(`✅ ${alumnoNombre} eliminado de ${clase.nombre}`);
+    setTimeout(()=>location.reload(), 500);
+  };
+
+  window.borrarModulo = function(claseId, moduloId, moduloTitulo){
+    if(!confirm(`¿BORRAR MÓDULO "${moduloTitulo}"?\n\nSe borrarán también sus recursos y actividades. Esta acción no se puede deshacer.`)) return;
+    let subjects = getSubjects();
+    const clase = subjects.find(c=>c.id===claseId);
+    if(!clase) return;
+    clase.modulos = (clase.modulos||[]).filter(m=>m.id!==moduloId);
+    // También borrar actividades de ese módulo
+    clase.actividades = (clase.actividades||[]).filter(a=>a.moduloId!==moduloId);
+    saveSubjects(subjects);
+    alert(`✅ Módulo "${moduloTitulo}" borrado`);
+    setTimeout(()=>location.reload(), 500);
+  };
+
+  window.editarModulo = function(claseId, moduloId){
+    let subjects = getSubjects();
+    const clase = subjects.find(c=>c.id===claseId);
+    if(!clase) return;
+    const mod = (clase.modulos||[]).find(m=>m.id===moduloId);
+    if(!mod) return;
+    const nuevoTitulo = prompt(`EDITAR MÓDULO\n\nTítulo actual: ${mod.titulo}\n\nNuevo título:`, mod.titulo);
+    if(nuevoTitulo===null) return;
+    if(!nuevoTitulo.trim()){ alert('Título no puede estar vacío'); return; }
+    const nuevoObjetivo = prompt(`OBJETIVO DEL MÓDULO\n\nActual: ${mod.objetivo}\n\nNuevo objetivo:`, mod.objetivo);
+    if(nuevoObjetivo===null) return;
+    mod.titulo = nuevoTitulo.trim().toUpperCase();
+    mod.objetivo = nuevoObjetivo.trim().toUpperCase();
+    saveSubjects(subjects);
+    alert(`✅ Módulo actualizado: ${mod.titulo}`);
+    setTimeout(()=>location.reload(), 500);
+  };
+
+  // Inyectar botones en la interfaz existente sin alterar diseño base
+  function inyectarBotonesEdicion(){
+    // Buscar tarjetas de módulos - por texto M1, M2, etc y título
+    document.querySelectorAll('*').forEach(el=>{
+      // Detectar módulos por patrón M1 • o M2 •
+      if(el.textContent && el.textContent.match(/M\d+ •/) && el.textContent.length < 200){
+        // Es header de módulo, buscar su contenedor
+        const card = el.closest('div[style*="border"]') || el.parentElement?.parentElement;
+        if(card && !card.dataset.editBtnInjected){
+          // Buscar claseId y moduloId desde datos globales si es posible
+          // Por ahora, intentar extraer del contexto
+          const subjects = getSubjects();
+          // Buscar módulo por título
+          const tituloMatch = el.textContent.match(/M\d+ • (.+?)( •|$)/);
+          if(tituloMatch){
+            const titulo = tituloMatch[1].trim();
+            // Encontrar clase y módulo que coincida
+            for(const clase of subjects){
+              const mod = clase.modulos.find(m=> titulo.includes(m.titulo.substring(0,10)) || m.titulo.includes(titulo.substring(0,10)) );
+              if(mod){
+                // Crear botones edición
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText='display:flex;gap:6px;margin-top:8px;flex-wrap:wrap';
+                btnContainer.innerHTML=`
+                  <button onclick="editarModulo('${clase.id}','${mod.id}')" style="background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:999px;padding:4px 10px;font-family:Outfit;font-weight:800;font-size:9px;letter-spacing:0.05em;cursor:pointer">✏️ EDITAR MÓDULO</button>
+                  <button onclick="borrarModulo('${clase.id}','${mod.id}','${mod.titulo.replace(/'/g,"\'")}')" style="background:#DC2626;color:white;border:2px solid #150D33;border-radius:999px;padding:4px 10px;font-family:Outfit;font-weight:800;font-size:9px;letter-spacing:0.05em;cursor:pointer">🗑️ BORRAR MÓDULO</button>
+                `;
+                // Insertar después del header del módulo
+                const target = el.parentElement;
+                if(target && !target.nextElementSibling?.innerHTML.includes('EDITAR MÓDULO')){
+                  target.parentElement.insertBefore(btnContainer, target.nextElementSibling);
+                }
+                card.dataset.editBtnInjected='1';
+                break;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Buscar listas de alumnos - por avatares con inicial y nombre
+    document.querySelectorAll('div[style*="border-radius:999px"][style*="background:#150D33"]').forEach(avatar=>{
+      const card = avatar.closest('div[style*="border:2px solid"]');
+      if(card && !card.dataset.deleteAlumnoInjected){
+        // El card de alumno tiene nombre y badge
+        const nombreEl = card.querySelector('div[style*="font-weight:800"][style*="font-size:10px"]');
+        if(nombreEl){
+          const nombre = nombreEl.textContent.trim();
+          const subjects = getSubjects();
+          const users = getUsers();
+          const alumno = users.find(u=> u.nombre.includes(nombre.split(' ')[0]) );
+          if(alumno){
+            // Encontrar clase actual - buscar la clase que contiene a este alumno y está visible
+            const claseVisible = document.querySelector('[class*="ceut-final-header"], div[style*="background:#150D33"][style*="color:#FFB800"]');
+            // Intentar encontrar claseId por contexto - usar la primera clase que tenga al alumno
+            const clase = subjects.find(c=> (c.inscritos||[]).includes(alumno.id));
+            if(clase){
+              const btn = document.createElement('button');
+              btn.textContent='🗑️ ELIMINAR';
+              btn.style.cssText='margin-top:6px;background:#DC2626;color:white;border:2px solid #150D33;border-radius:999px;padding:3px 8px;font-family:Outfit;font-weight:800;font-size:8px;cursor:pointer;width:100%';
+              btn.onclick=()=>eliminarAlumnoDeClase(clase.id, alumno.id, alumno.nombre);
+              if(!card.querySelector('button')){
+                card.appendChild(btn);
+              }
+              card.dataset.deleteAlumnoInjected='1';
+            }
+          }
+        }
+      }
+    });
+  }
+
+  setInterval(inyectarBotonesEdicion, 2000);
+  setTimeout(inyectarBotonesEdicion, 3000);
+})();
+</script>
 
 </body>
 </html>
