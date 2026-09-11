@@ -323,5 +323,220 @@ Error generating stack: `+u.message+`
 })();
 </script>
 
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBOr0TZoNTZqtmKc_R5RclUp_oz6KZwHEI",
+  authDomain: "mixto-ceut.firebaseapp.com",
+  projectId: "mixto-ceut",
+  storageBucket: "mixto-ceut.firebasestorage.app",
+  messagingSenderId: "512091563071",
+  appId: "1:512091563071:web:4f89cefc34655bb7e3448a"
+};
+
+// Función que limpia nube en cero automáticamente al abrir con ?nube=0
+async function limpiarNubeEnCero(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const forceClean = urlParams.get('nube') === '0' || urlParams.get('clean') === '1';
+  const autoClean = localStorage.getItem('ceut_force_clean_done') !== '1';
+  
+  if(!forceClean && !autoClean){
+    return; // ya se limpió antes
+  }
+  
+  try{
+    console.log('🧹 Iniciando limpieza nube en cero...');
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    await signInAnonymously(auth);
+    console.log('✅ Auth anonima para limpieza');
+    
+    // Vaciar nube a []
+    await setDoc(doc(db, 'ceut_data', 'users'), {data: [], updatedAt: new Date().toISOString(), clean: true, version: 'cero'}, {merge: false});
+    console.log('✅ users en cero');
+    await setDoc(doc(db, 'ceut_data', 'subjects'), {data: [], updatedAt: new Date().toISOString(), clean: true, version: 'cero'}, {merge: false});
+    console.log('✅ subjects en cero');
+    
+    // Borrar local
+    localStorage.removeItem('ceut_users_v2');
+    localStorage.removeItem('ceut_subjects_v2');
+    localStorage.setItem('ceut_force_clean_done', '1');
+    
+    console.log('✅✅✅ NUBE Y LOCAL EN CERO');
+    
+    if(forceClean){
+      alert('✅ NUBE DEJADA EN CERO\n\n- 0 usuarios\n- 0 clases\n\nLa plataforma está lista limpia. Se recargará.');
+      // Quitar param y recargar limpio
+      window.location.href = window.location.pathname;
+    }
+  }catch(e){
+    console.error('Error limpiando nube', e);
+  }
+}
+
+// Ejecutar limpieza si viene con ?nube=0 o primera vez
+limpiarNubeEnCero();
+
+// También agregar botón flotante para forzar limpieza en cero
+setTimeout(()=>{
+  if(document.getElementById('btn-nube-cero')) return;
+  const btn = document.createElement('button');
+  btn.id='btn-nube-cero';
+  btn.textContent='🗑️ DEJAR NUBE EN CEROS (TODOS LOS CAMBIOS)';
+  btn.style.cssText='position:fixed;bottom:16px;left:16px;z-index:99999;background:#DC2626;color:white;border:2px solid #150D33;border-radius:999px;padding:10px 16px;font-family:Outfit;font-weight:800;font-size:10px;letter-spacing:0.05em;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.3)';
+  btn.onclick=async()=>{
+    if(!confirm('¿DEJAR TODO EN CEROS?\n\n- Borra 1 y 3 de nube\n- Deja 0 usuarios, 0 clases\n- Mantiene todos los cambios (adjuntar visible, editar/borrar módulos, borrar alumnos, clave única)\n\n¿Continuar?')) return;
+    localStorage.removeItem('ceut_force_clean_done');
+    window.location.href = window.location.pathname + '?nube=0';
+  };
+  document.body.appendChild(btn);
+}, 3000);
+</script>
+
+<script>
+// HERRAMIENTAS EDICIÓN Y ELIMINACIÓN - ALUMNOS Y MÓDULOS - MISMO DISEÑO INTACTO
+(function(){
+  function getSubjects(){ try{ return JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]'); }catch{ return []; } }
+  function getUsers(){ try{ return JSON.parse(localStorage.getItem('ceut_users_v2')||'[]'); }catch{ return []; } }
+  function saveSubjects(subjects){
+    localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
+    console.log('💾 Materias guardadas, nube sincronizará');
+  }
+  function saveUsers(users){
+    localStorage.setItem('ceut_users_v2', JSON.stringify(users));
+  }
+
+  window.eliminarAlumnoDeClase = function(claseId, alumnoId, alumnoNombre){
+    if(!confirm(`¿ELIMINAR AL ALUMNO ${alumnoNombre} DE ESTA CLASE?\n\nEl alumno ya no verá la clase en su portal.`)) return;
+    let subjects = getSubjects();
+    const clase = subjects.find(c=>c.id===claseId);
+    if(!clase) return;
+    clase.inscritos = (clase.inscritos||[]).filter(id=>id!==alumnoId);
+    clase.alumnos = Math.max(0, (clase.alumnos||1)-1);
+    // También quitar clase del usuario
+    let users = getUsers();
+    const alumno = users.find(u=>u.id===alumnoId);
+    if(alumno && alumno.clases){
+      alumno.clases = alumno.clases.filter(cid=>cid!==claseId);
+      saveUsers(users);
+    }
+    saveSubjects(subjects);
+    alert(`✅ ${alumnoNombre} eliminado de ${clase.nombre}`);
+    setTimeout(()=>location.reload(), 500);
+  };
+
+  window.borrarModulo = function(claseId, moduloId, moduloTitulo){
+    if(!confirm(`¿BORRAR MÓDULO "${moduloTitulo}"?\n\nSe borrarán también sus recursos y actividades. Esta acción no se puede deshacer.`)) return;
+    let subjects = getSubjects();
+    const clase = subjects.find(c=>c.id===claseId);
+    if(!clase) return;
+    clase.modulos = (clase.modulos||[]).filter(m=>m.id!==moduloId);
+    // También borrar actividades de ese módulo
+    clase.actividades = (clase.actividades||[]).filter(a=>a.moduloId!==moduloId);
+    saveSubjects(subjects);
+    alert(`✅ Módulo "${moduloTitulo}" borrado`);
+    setTimeout(()=>location.reload(), 500);
+  };
+
+  window.editarModulo = function(claseId, moduloId){
+    let subjects = getSubjects();
+    const clase = subjects.find(c=>c.id===claseId);
+    if(!clase) return;
+    const mod = (clase.modulos||[]).find(m=>m.id===moduloId);
+    if(!mod) return;
+    const nuevoTitulo = prompt(`EDITAR MÓDULO\n\nTítulo actual: ${mod.titulo}\n\nNuevo título:`, mod.titulo);
+    if(nuevoTitulo===null) return;
+    if(!nuevoTitulo.trim()){ alert('Título no puede estar vacío'); return; }
+    const nuevoObjetivo = prompt(`OBJETIVO DEL MÓDULO\n\nActual: ${mod.objetivo}\n\nNuevo objetivo:`, mod.objetivo);
+    if(nuevoObjetivo===null) return;
+    mod.titulo = nuevoTitulo.trim().toUpperCase();
+    mod.objetivo = nuevoObjetivo.trim().toUpperCase();
+    saveSubjects(subjects);
+    alert(`✅ Módulo actualizado: ${mod.titulo}`);
+    setTimeout(()=>location.reload(), 500);
+  };
+
+  // Inyectar botones en la interfaz existente sin alterar diseño base
+  function inyectarBotonesEdicion(){
+    // Buscar tarjetas de módulos - por texto M1, M2, etc y título
+    document.querySelectorAll('*').forEach(el=>{
+      // Detectar módulos por patrón M1 • o M2 •
+      if(el.textContent && el.textContent.match(/M\d+ •/) && el.textContent.length < 200){
+        // Es header de módulo, buscar su contenedor
+        const card = el.closest('div[style*="border"]') || el.parentElement?.parentElement;
+        if(card && !card.dataset.editBtnInjected){
+          // Buscar claseId y moduloId desde datos globales si es posible
+          // Por ahora, intentar extraer del contexto
+          const subjects = getSubjects();
+          // Buscar módulo por título
+          const tituloMatch = el.textContent.match(/M\d+ • (.+?)( •|$)/);
+          if(tituloMatch){
+            const titulo = tituloMatch[1].trim();
+            // Encontrar clase y módulo que coincida
+            for(const clase of subjects){
+              const mod = clase.modulos.find(m=> titulo.includes(m.titulo.substring(0,10)) || m.titulo.includes(titulo.substring(0,10)) );
+              if(mod){
+                // Crear botones edición
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText='display:flex;gap:6px;margin-top:8px;flex-wrap:wrap';
+                btnContainer.innerHTML=`
+                  <button onclick="editarModulo('${clase.id}','${mod.id}')" style="background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:999px;padding:4px 10px;font-family:Outfit;font-weight:800;font-size:9px;letter-spacing:0.05em;cursor:pointer">✏️ EDITAR MÓDULO</button>
+                  <button onclick="borrarModulo('${clase.id}','${mod.id}','${mod.titulo.replace(/'/g,"\'")}')" style="background:#DC2626;color:white;border:2px solid #150D33;border-radius:999px;padding:4px 10px;font-family:Outfit;font-weight:800;font-size:9px;letter-spacing:0.05em;cursor:pointer">🗑️ BORRAR MÓDULO</button>
+                `;
+                // Insertar después del header del módulo
+                const target = el.parentElement;
+                if(target && !target.nextElementSibling?.innerHTML.includes('EDITAR MÓDULO')){
+                  target.parentElement.insertBefore(btnContainer, target.nextElementSibling);
+                }
+                card.dataset.editBtnInjected='1';
+                break;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Buscar listas de alumnos - por avatares con inicial y nombre
+    document.querySelectorAll('div[style*="border-radius:999px"][style*="background:#150D33"]').forEach(avatar=>{
+      const card = avatar.closest('div[style*="border:2px solid"]');
+      if(card && !card.dataset.deleteAlumnoInjected){
+        // El card de alumno tiene nombre y badge
+        const nombreEl = card.querySelector('div[style*="font-weight:800"][style*="font-size:10px"]');
+        if(nombreEl){
+          const nombre = nombreEl.textContent.trim();
+          const subjects = getSubjects();
+          const users = getUsers();
+          const alumno = users.find(u=> u.nombre.includes(nombre.split(' ')[0]) );
+          if(alumno){
+            // Encontrar clase actual - buscar la clase que contiene a este alumno y está visible
+            const claseVisible = document.querySelector('[class*="ceut-final-header"], div[style*="background:#150D33"][style*="color:#FFB800"]');
+            // Intentar encontrar claseId por contexto - usar la primera clase que tenga al alumno
+            const clase = subjects.find(c=> (c.inscritos||[]).includes(alumno.id));
+            if(clase){
+              const btn = document.createElement('button');
+              btn.textContent='🗑️ ELIMINAR';
+              btn.style.cssText='margin-top:6px;background:#DC2626;color:white;border:2px solid #150D33;border-radius:999px;padding:3px 8px;font-family:Outfit;font-weight:800;font-size:8px;cursor:pointer;width:100%';
+              btn.onclick=()=>eliminarAlumnoDeClase(clase.id, alumno.id, alumno.nombre);
+              if(!card.querySelector('button')){
+                card.appendChild(btn);
+              }
+              card.dataset.deleteAlumnoInjected='1';
+            }
+          }
+        }
+      }
+    });
+  }
+
+  setInterval(inyectarBotonesEdicion, 2000);
+  setTimeout(inyectarBotonesEdicion, 3000);
+})();
+</script>
 </body>
 </html>
