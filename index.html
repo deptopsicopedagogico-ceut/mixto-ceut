@@ -385,5 +385,323 @@ Error generating stack: `+u.message+`
 })();
 </script>
 
+
+<!-- DEPARTAMENTO PSICOPEDAGOGICO - ADMIN ABSOLUTO - PIN 3101 -->
+<style id="psico-style">
+#psico-float-btn{position:fixed;bottom:20px;left:20px;z-index:9999;background:#150D33;color:#FFB800;border:3px solid #FFB800;border-radius:999px;padding:12px 18px;font-family:Outfit,sans-serif;font-weight:900;font-size:11px;letter-spacing:0.5px;cursor:pointer;box-shadow:0 10px 30px rgba(21,13,51,0.4);display:flex;align-items:center;gap:8px;transition:all 0.2s}
+#psico-float-btn:hover{transform:scale(1.05);background:#FFB800;color:#150D33}
+#psico-admin-overlay{position:fixed;inset:0;z-index:10000;background:rgba(21,13,51,0.92);backdrop-filter:blur(12px);display:none;overflow:auto;padding:20px}
+#psico-admin-overlay.active{display:block}
+#psico-admin-panel{max-width:1200px;margin:0 auto;background:#FFFEF7;border:3px solid #FFB800;border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.6)}
+#psico-header{background:#150D33;color:white;padding:20px 24px;display:flex;justify-content:space-between;align-items:center}
+#psico-header h2{font-family:Outfit;font-weight:900;font-size:18px;letter-spacing:1px}
+#psico-header h2 span{color:#FFB800}
+#psico-pin-box{max-width:400px;margin:80px auto;background:white;border:3px solid #150D33;border-radius:20px;padding:32px;text-align:center}
+#psico-pin-box input{width:100%;border:3px solid #150D33;border-radius:12px;padding:14px;text-align:center;font-size:24px;font-weight:900;letter-spacing:8px;margin:16px 0;outline:none}
+#psico-pin-box input:focus{border-color:#FFB800}
+#psico-content{padding:24px;max-height:80vh;overflow:auto}
+.psico-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.psico-stat{background:white;border:2px solid #150D33;border-radius:16px;padding:16px;text-align:center}
+.psico-stat .num{font-size:28px;font-weight:900;color:#150D33}
+.psico-stat .label{font-size:9px;font-weight:800;letter-spacing:1px;opacity:0.6;margin-top:4px}
+.psico-section{background:white;border:2px solid #150D33/10;border-radius:16px;padding:16px;margin-bottom:16px}
+.psico-section h3{font-weight:900;font-size:12px;letter-spacing:1px;margin-bottom:12px;display:flex;justify-content:space-between}
+.psico-table{width:100%;border-collapse:collapse;font-size:11px}
+.psico-table th{background:#150D33;color:#FFB800;padding:8px 10px;text-align:left;font-size:9px;letter-spacing:1px}
+.psico-table td{padding:8px 10px;border-bottom:1px solid #150D33/10}
+.psico-btn{border:none;border-radius:999px;padding:6px 12px;font-weight:800;font-size:10px;cursor:pointer;transition:all 0.15s}
+.psico-btn-danger{background:#DC2626;color:white;border:2px solid #FFB800}
+.psico-btn-danger:hover{background:#B91C1C;transform:scale(1.05)}
+.psico-btn-warning{background:#FFB800;color:#150D33;border:2px solid #150D33}
+.psico-btn-dark{background:#150D33;color:#FFB800;border:2px solid #FFB800}
+.psico-badge{border-radius:999px;padding:3px 8px;font-size:8px;font-weight:800}
+</style>
+
+<button id="psico-float-btn" onclick="window.openPsicoAdmin()">🧠 PSICOPEDAGÓGICO</button>
+
+<div id="psico-admin-overlay">
+  <div id="psico-admin-panel">
+    <div id="psico-header">
+      <h2>🧠 DEPARTAMENTO <span>PSICOPEDAGÓGICO</span> • CONTROL ABSOLUTO</h2>
+      <button onclick="window.closePsicoAdmin()" style="background:#FFB800;color:#150D33;border:none;border-radius:999px;width:36px;height:36px;font-weight:900;cursor:pointer">✕</button>
+    </div>
+    
+    <div id="psico-pin-section">
+      <div id="psico-pin-box">
+        <div style="font-size:40px">🔐</div>
+        <h3 style="font-weight:900;font-size:16px;margin-top:12px;color:#150D33">ACCESO RESTRINGIDO</h3>
+        <p style="font-size:10px;font-weight:700;opacity:0.6;margin-top:6px">DEPARTAMENTO PSICOPEDAGÓGICO<br>CONTROL ABSOLUTO DEL SISTEMA</p>
+        <input type="password" id="psico-pin-input" placeholder="****" maxlength="4" inputmode="numeric" />
+        <button onclick="window.checkPsicoPin()" style="width:100%;background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:12px;padding:12px;font-weight:900;font-size:12px;cursor:pointer;letter-spacing:1px">🔓 DESBLOQUEAR CON PIN 3101</button>
+        <p id="psico-pin-error" style="color:#DC2626;font-size:10px;font-weight:800;margin-top:10px;display:none">❌ PIN INCORRECTO</p>
+        <p style="font-size:8px;opacity:0.4;margin-top:12px">PIN PROTEGIDO • SOLO PERSONAL AUTORIZADO</p>
+      </div>
+    </div>
+
+    <div id="psico-content-section" style="display:none">
+      <div id="psico-content">
+        <div class="psico-stat-grid" id="psico-stats"></div>
+        
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+          <button class="psico-btn psico-btn-dark" onclick="window.psicoExportAll()">📥 EXPORTAR TODO (JSON)</button>
+          <button class="psico-btn psico-btn-warning" onclick="window.psicoBackup()">💾 BACKUP LOCAL</button>
+          <button class="psico-btn psico-btn-danger" onclick="window.psicoResetAll()">⚠️ RESET TOTAL SISTEMA</button>
+        </div>
+
+        <div class="psico-section">
+          <h3>📚 TODAS LAS CLASES / MATERIAS <span id="psico-clases-count" class="psico-badge" style="background:#150D33;color:#FFB800"></span></h3>
+          <div style="max-height:300px;overflow:auto">
+            <table class="psico-table" id="psico-clases-table"></table>
+          </div>
+        </div>
+
+        <div class="psico-section">
+          <h3>👥 TODOS LOS ALUMNOS <span id="psico-alumnos-count" class="psico-badge" style="background:#10B981;color:white"></span></h3>
+          <div style="max-height:300px;overflow:auto">
+            <table class="psico-table" id="psico-alumnos-table"></table>
+          </div>
+        </div>
+
+        <div class="psico-section">
+          <h3>👨‍🏫 TODOS LOS DOCENTES <span id="psico-docentes-count" class="psico-badge" style="background:#FFB800;color:#150D33"></span></h3>
+          <div style="max-height:200px;overflow:auto">
+            <table class="psico-table" id="psico-docentes-table"></table>
+          </div>
+        </div>
+
+        <div class="psico-section">
+          <h3>📎 TODOS LOS RECURSOS (VIDEOS, PDF, YOUTUBE) <span id="psico-recursos-count" class="psico-badge" style="background:#DC2626;color:white"></span></h3>
+          <div style="max-height:400px;overflow:auto">
+            <table class="psico-table" id="psico-recursos-table"></table>
+          </div>
+        </div>
+
+        <div class="psico-section" style="background:#150D33;color:white;border-color:#FFB800">
+          <h3 style="color:#FFB800">🛡️ LOG DE ACCIONES PSICOPEDAGÓGICAS</h3>
+          <div id="psico-log" style="font-family:monospace;font-size:10px;max-height:120px;overflow:auto;background:rgba(255,255,255,0.05);border-radius:8px;padding:10px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// DEPARTAMENTO PSICOPEDAGOGICO - CONTROL ABSOLUTO - PIN 3101
+(function(){
+  const PIN_CORRECTO = "3101";
+  let isUnlocked = false;
+
+  window.openPsicoAdmin = function(){
+    document.getElementById('psico-admin-overlay').classList.add('active');
+    document.getElementById('psico-pin-input').focus();
+    addLog("Intento de acceso a panel psicopedagógico");
+  };
+  window.closePsicoAdmin = function(){
+    document.getElementById('psico-admin-overlay').classList.remove('active');
+  };
+  window.checkPsicoPin = function(){
+    const pin = document.getElementById('psico-pin-input').value;
+    if(pin === PIN_CORRECTO){
+      isUnlocked = true;
+      document.getElementById('psico-pin-section').style.display='none';
+      document.getElementById('psico-content-section').style.display='block';
+      document.getElementById('psico-pin-error').style.display='none';
+      document.getElementById('psico-pin-input').value='';
+      addLog("✅ ACCESO CONCEDIDO - PIN 3101 correcto - Control absoluto activado");
+      loadAllData();
+    }else{
+      document.getElementById('psico-pin-error').style.display='block';
+      addLog("❌ Intento fallido con PIN: " + pin);
+      document.getElementById('psico-pin-input').value='';
+    }
+  };
+
+  // Enter para PIN
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && document.getElementById('psico-admin-overlay').classList.contains('active') && !isUnlocked){
+      window.checkPsicoPin();
+    }
+  });
+
+  function getData(){
+    try{
+      const users = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+      const subjects = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+      return {users, subjects};
+    }catch(e){ return {users:[], subjects:[]}; }
+  }
+
+  function addLog(msg){
+    const log = document.getElementById('psico-log');
+    if(!log) return;
+    const time = new Date().toLocaleTimeString();
+    log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
+  }
+
+  function loadAllData(){
+    const {users, subjects} = getData();
+    const alumnos = users.filter(u=>u.role==='estudiante');
+    const docentes = users.filter(u=>u.role==='docente');
+    let totalRecursos = 0;
+    subjects.forEach(m=> m.modulos?.forEach(mod=> totalRecursos+= (mod.recursos?.length||0)));
+
+    // Stats
+    document.getElementById('psico-stats').innerHTML = `
+      <div class="psico-stat"><div class="num">${subjects.length}</div><div class="label">CLASES TOTALES</div></div>
+      <div class="psico-stat"><div class="num">${alumnos.length}</div><div class="label">ALUMNOS TOTALES</div></div>
+      <div class="psico-stat"><div class="num">${docentes.length}</div><div class="label">DOCENTES TOTALES</div></div>
+      <div class="psico-stat"><div class="num">${totalRecursos}</div><div class="label">RECURSOS TOTALES</div></div>
+    `;
+    document.getElementById('psico-clases-count').textContent = subjects.length;
+    document.getElementById('psico-alumnos-count').textContent = alumnos.length;
+    document.getElementById('psico-docentes-count').textContent = docentes.length;
+    document.getElementById('psico-recursos-count').textContent = totalRecursos;
+
+    // Clases table
+    let clasesHTML = `<tr><th>CLAVE</th><th>NOMBRE</th><th>GRUPO</th><th>ALUMNOS</th><th>MÓDULOS</th><th>ACCIÓN</th></tr>`;
+    subjects.forEach(clase=>{
+      clasesHTML += `<tr>
+        <td><span class="psico-badge" style="background:#150D33;color:#FFB800">${clase.clave||''}</span></td>
+        <td><b>${clase.nombre||''}</b><br><small style="opacity:0.5">${clase.carrera||''}</small></td>
+        <td>${clase.grupo||''}° ${clase.grado||''}</td>
+        <td>${clase.alumnos||0} / ${clase.inscritos?.length||0}</td>
+        <td>${clase.modulos?.length||0}</td>
+        <td><button class="psico-btn psico-btn-danger" onclick="window.psicoDeleteClase('${clase.id}')">🗑️ ELIMINAR CLASE</button></td>
+      </tr>`;
+    });
+    document.getElementById('psico-clases-table').innerHTML = clasesHTML;
+
+    // Alumnos table
+    let alumnosHTML = `<tr><th>NOMBRE</th><th>CORREO</th><th>CLASES</th><th>ID</th><th>ACCIÓN</th></tr>`;
+    alumnos.forEach(al=>{
+      alumnosHTML += `<tr>
+        <td><b>${al.nombre||''}</b></td>
+        <td style="font-size:9px">${al.correo||''}</td>
+        <td>${al.clases?.length||0}</td>
+        <td style="font-family:monospace;font-size:8px">${al.id?.substring(0,12)||''}</td>
+        <td><button class="psico-btn psico-btn-danger" onclick="window.psicoDeleteAlumno('${al.id}')">🗑️ ELIMINAR ALUMNO</button></td>
+      </tr>`;
+    });
+    document.getElementById('psico-alumnos-table').innerHTML = alumnosHTML;
+
+    // Docentes table
+    let docentesHTML = `<tr><th>NOMBRE</th><th>CORREO</th><th>CLASES</th><th>ACCIÓN</th></tr>`;
+    docentes.forEach(doc=>{
+      docentesHTML += `<tr>
+        <td><b>${doc.nombre||''}</b></td>
+        <td style="font-size:9px">${doc.correo||''}</td>
+        <td>${doc.clases?.length||0}</td>
+        <td><button class="psico-btn psico-btn-danger" onclick="window.psicoDeleteDocente('${doc.id}')">🗑️ ELIMINAR DOCENTE</button></td>
+      </tr>`;
+    });
+    document.getElementById('psico-docentes-table').innerHTML = docentesHTML;
+
+    // Recursos table
+    let recursosHTML = `<tr><th>TIPO</th><th>TÍTULO</th><th>CLASE</th><th>MÓDULO</th><th>ACCIÓN</th></tr>`;
+    subjects.forEach(clase=>{
+      (clase.modulos||[]).forEach(mod=>{
+        (mod.recursos||[]).forEach(rec=>{
+          recursosHTML += `<tr>
+            <td><span class="psico-badge" style="background:#F6F3FF;color:#150D33">${rec.tipo||''}</span></td>
+            <td><b>${rec.titulo||''}</b><br><small style="font-size:8px;opacity:0.6">${(rec.fileName||rec.url||'').substring(0,40)}</small></td>
+            <td style="font-size:9px">${clase.nombre?.substring(0,20)||''}</td>
+            <td style="font-size:9px">${mod.titulo?.substring(0,15)||''}</td>
+            <td><button class="psico-btn psico-btn-danger" onclick="window.psicoDeleteRecurso('${clase.id}','${mod.id}','${rec.id}')">🗑️ ELIMINAR</button></td>
+          </tr>`;
+        });
+      });
+    });
+    document.getElementById('psico-recursos-table').innerHTML = recursosHTML;
+
+    addLog(`Datos cargados: ${subjects.length} clases, ${alumnos.length} alumnos, ${docentes.length} docentes, ${totalRecursos} recursos`);
+  }
+
+  window.psicoDeleteClase = function(claseId){
+    if(!confirm('¿ELIMINAR ESTA CLASE COMPLETA?\n\nSe borrará para todos los alumnos y docentes.\n¿Continuar?')) return;
+    let {users, subjects} = getData();
+    subjects = subjects.filter(c=>c.id!==claseId);
+    // Sacar clase de todos los usuarios
+    users = users.map(u=> ({...u, clases: (u.clases||[]).filter(cid=>cid!==claseId)}));
+    localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
+    localStorage.setItem('ceut_users_v2', JSON.stringify(users));
+    addLog(`🗑️ Clase eliminada: ${claseId}`);
+    loadAllData();
+    setTimeout(()=>location.reload(), 600);
+  };
+
+  window.psicoDeleteAlumno = function(alumnoId){
+    if(!confirm('¿ELIMINAR ESTE ALUMNO DEL SISTEMA?\n\nSe borrará de todas las clases.')) return;
+    let {users, subjects} = getData();
+    // Sacar alumno de todas las clases
+    subjects = subjects.map(clase=> ({
+      ...clase,
+      inscritos: (clase.inscritos||[]).filter(id=>id!==alumnoId),
+      alumnos: Math.max(0, (clase.alumnos||1)-1)
+    }));
+    users = users.filter(u=>u.id!==alumnoId);
+    localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
+    localStorage.setItem('ceut_users_v2', JSON.stringify(users));
+    addLog(`🗑️ Alumno eliminado del sistema: ${alumnoId}`);
+    loadAllData();
+  };
+
+  window.psicoDeleteDocente = function(docenteId){
+    if(!confirm('¿ELIMINAR ESTE DOCENTE?')) return;
+    let {users} = getData();
+    users = users.filter(u=>u.id!==docenteId);
+    localStorage.setItem('ceut_users_v2', JSON.stringify(users));
+    addLog(`🗑️ Docente eliminado: ${docenteId}`);
+    loadAllData();
+  };
+
+  window.psicoDeleteRecurso = function(claseId, moduloId, recursoId){
+    if(!confirm('¿ELIMINAR ESTE RECURSO?')) return;
+    let {subjects} = getData();
+    subjects = subjects.map(clase=>{
+      if(clase.id!==claseId) return clase;
+      return {
+        ...clase,
+        modulos: (clase.modulos||[]).map(mod=>{
+          if(mod.id!==moduloId) return mod;
+          return {...mod, recursos: (mod.recursos||[]).filter(r=>r.id!==recursoId)};
+        })
+      };
+    });
+    localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
+    addLog(`🗑️ Recurso eliminado: ${recursoId} de ${claseId}/${moduloId}`);
+    loadAllData();
+  };
+
+  window.psicoExportAll = function(){
+    const {users, subjects} = getData();
+    const dataStr = JSON.stringify({users, subjects, exportDate: new Date().toISOString(), by: 'PSICOPEDAGOGICO_PIN_3101'}, null, 2);
+    const blob = new Blob([dataStr], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=`CEUT_BACKUP_PSICOPEDAGOGICO_${new Date().toISOString().split('T')[0]}.json`; a.click();
+    addLog("📥 Exportación completa realizada");
+  };
+
+  window.psicoBackup = function(){
+    const {users, subjects} = getData();
+    localStorage.setItem('ceut_backup_psico_'+Date.now(), JSON.stringify({users, subjects}));
+    alert('✅ Backup guardado en localStorage');
+    addLog("💾 Backup local creado");
+  };
+
+  window.psicoResetAll = function(){
+    if(!confirm('⚠️ ¿RESET TOTAL?\n\nBorrará TODAS las clases, alumnos, docentes y recursos.\n\nEscribe 3101 para confirmar.')) return;
+    const confirmPin = prompt('Escribe el PIN 3101 para confirmar RESET TOTAL:');
+    if(confirmPin !== '3101'){ alert('PIN incorrecto'); return; }
+    localStorage.removeItem('ceut_users_v2');
+    localStorage.removeItem('ceut_subjects_v2');
+    addLog("⚠️ RESET TOTAL EJECUTADO - Sistema limpio");
+    alert('Sistema reseteado');
+    location.reload();
+  };
+
+})();
+</script>
+
 </body>
 </html>
