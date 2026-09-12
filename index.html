@@ -596,5 +596,27 @@ Error generating stack: `+u.message+`
 })();
 </script>
 
+
+<script>
+// ELIMINAR BOTON ROJO DE PAGINA PRINCIPAL - SOLO DEBE ESTAR DENTRO DEL ADMINISTRADOR PSICOPEDAGOGICO PIN 3101
+(function(){
+  function killExternalRedButtons(){
+    // Eliminar cualquier boton BORRAR NUBE fuera del admin
+    document.querySelectorAll('[id*="borrar-nube"], [id*="BORRAR"], button').forEach(btn=>{
+      const txt = (btn.textContent||'').toUpperCase();
+      if(txt.includes('BORRAR NUBE') && !btn.closest('#psico-admin-overlay')){
+        btn.remove();
+        console.log('Boton rojo total eliminado de pagina principal');
+      }
+    });
+  }
+  // Ejecutar varias veces
+  setInterval(killExternalRedButtons, 800);
+  setTimeout(killExternalRedButtons, 500);
+  setTimeout(killExternalRedButtons, 1500);
+  document.addEventListener('DOMContentLoaded', killExternalRedButtons);
+})();
+</script>
+
 </body>
 </html>
