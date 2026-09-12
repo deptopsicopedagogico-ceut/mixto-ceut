@@ -338,11 +338,20 @@ Error generating stack: `+u.message+`
 </script>
 
 
+
+
+
 <script>
-// VISOR UNIVERSAL CEUT - MISMO DISEÑO EXACTO - SOLO AGREGA VISOR, NO CAMBIA NADA
+// VISOR UNIVERSAL + ELIMINAR + YOUTUBE - MISMO DISEÑO EXACTO - NO TOCA NADA MAS
 (function(){
-  if(document.getElementById('ceut-visor-modal')) return;
+  if(document.getElementById('ceut-visor-modal')){
+    document.getElementById('ceut-visor-modal').remove();
+  }
+  const oldStyle = document.getElementById('ceut-visor-style');
+  if(oldStyle) oldStyle.remove();
+
   const style = document.createElement('style');
+  style.id='ceut-visor-style';
   style.textContent = `
     #ceut-visor-modal{position:fixed;inset:0;z-index:99999;background:rgba(21,13,51,0.92);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:12px}
     #ceut-visor-modal.activo{display:flex}
@@ -351,22 +360,32 @@ Error generating stack: `+u.message+`
     #ceut-visor-body{flex:1;background:#F6F3FF;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
     #ceut-visor-body iframe,#ceut-visor-body video{width:100%;height:100%;border:none;background:black}
     #ceut-visor-body img{max-width:100%;max-height:100%;object-fit:contain}
-    .ceut-btn-visor{background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:999px;padding:6px 12px;font-family:Outfit,sans-serif;font-weight:800;font-size:10px;cursor:pointer}
+    .ceut-btn-visor{background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:999px;padding:6px 12px;font-family:Outfit,sans-serif;font-weight:800;font-size:10px;cursor:pointer;letter-spacing:0.02em}
     .ceut-btn-visor:hover{background:#FFB800;color:#150D33}
+    .ceut-btn-del{background:#DC2626;color:white;border:2px solid #FFB800;border-radius:999px;padding:6px 10px;font-family:Outfit,sans-serif;font-weight:800;font-size:9px;cursor:pointer}
+    .ceut-btn-del:hover{background:#B91C1C}
   `;
   document.head.appendChild(style);
+  
   const modal = document.createElement('div');
   modal.id='ceut-visor-modal';
   modal.innerHTML=`
     <div id="ceut-visor-box" onclick="event.stopPropagation()">
       <div id="ceut-visor-head">
-        <div style="display:flex;align-items:center;gap:8px"><span id="ceut-visor-icon">📄</span><span id="ceut-visor-title" style="font-weight:900;font-size:11px;letter-spacing:0.05em;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">RECURSO</span></div>
-        <div style="display:flex;gap:8px;align-items:center"><a id="ceut-visor-dl" download style="display:none" class="ceut-btn-visor" href="#">⬇️ DESCARGAR</a><button onclick="window.cerrarVisorCEUT()" style="width:28px;height:28px;border-radius:999px;background:white;color:#150D33;font-weight:900;border:none;cursor:pointer">✕</button></div>
+        <div style="display:flex;align-items:center;gap:8px"><span id="ceut-visor-icon">📄</span><span id="ceut-visor-title" style="font-weight:900;font-size:11px;letter-spacing:0.05em;max-width:55vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">RECURSO</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <a id="ceut-visor-dl" download style="display:none" class="ceut-btn-visor" href="#">⬇️ DESCARGAR</a>
+          <button id="ceut-visor-del" class="ceut-btn-del" style="display:none">🗑️ ELIMINAR</button>
+          <button onclick="window.cerrarVisorCEUT()" style="width:28px;height:28px;border-radius:999px;background:white;color:#150D33;font-weight:900;border:none;cursor:pointer">✕</button>
+        </div>
       </div>
       <div id="ceut-visor-body"></div>
       <div style="background:white;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;border-top:2px solid rgba(21,13,51,0.08)">
         <span style="font-family:Outfit;font-weight:800;font-size:8px;opacity:0.5">VISOR INTEGRADO CEUT • MAESTRO Y ALUMNO • SIN SALIR DE LA PÁGINA</span>
-        <button onclick="window.cerrarVisorCEUT()" class="ceut-btn-visor">CERRAR</button>
+        <div style="display:flex;gap:6px">
+          <button onclick="window.eliminarDesdeVisor()" class="ceut-btn-del">🗑️ ELIMINAR ESTE MATERIAL</button>
+          <button onclick="window.cerrarVisorCEUT()" class="ceut-btn-visor">CERRAR</button>
+        </div>
       </div>
     </div>
   `;
@@ -384,12 +403,23 @@ Error generating stack: `+u.message+`
   function transYT(url){
     try{
       let id=null;
-      if(url.includes('youtu.be/')) id=url.split('youtu.be/')[1].split(/[?&]/)[0];
-      else if(url.includes('v=')) id=new URL(url).searchParams.get('v');
-      else if(url.includes('/embed/')) return url;
-      if(id) return `https://www.youtube.com/embed/${id}?autoplay=1`;
+      url = url.trim();
+      if(url.includes('youtu.be/')){
+        id=url.split('youtu.be/')[1].split(/[?&\/]/)[0];
+      } else if(url.includes('youtube.com/watch')){
+        const u = new URL(url);
+        id = u.searchParams.get('v');
+      } else if(url.includes('youtube.com/embed/')){
+        return url.includes('?') ? url : url + '?autoplay=1';
+      } else if(url.includes('youtube.com/shorts/')){
+        id=url.split('/shorts/')[1].split(/[?&\/]/)[0];
+      }
+      if(id) return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
       return url;
     }catch(e){return url}
+  }
+  function esYouTube(url){
+    return url && (url.includes('youtube.com') || url.includes('youtu.be'));
   }
   function tipoRec(rec){
     const n=(rec.fileName||rec.titulo||'').toLowerCase();
@@ -405,20 +435,24 @@ Error generating stack: `+u.message+`
     return 'otro';
   }
 
+  let recursoActualId = null;
+
   window.abrirVisorCEUT = function(recId){
     try{
       const subjects = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
       let rec=null;
       subjects.forEach(c=> (c.modulos||[]).forEach(m=> (m.recursos||[]).forEach(r=>{ if(r.id===recId) rec=r; })));
       if(!rec) return;
+      recursoActualId = recId;
       const tipo = tipoRec(rec);
       const modal = document.getElementById('ceut-visor-modal');
       const body = document.getElementById('ceut-visor-body');
       const title = document.getElementById('ceut-visor-title');
       const icon = document.getElementById('ceut-visor-icon');
       const dl = document.getElementById('ceut-visor-dl');
+      const delBtn = document.getElementById('ceut-visor-del');
       title.textContent = rec.titulo || rec.fileName || 'RECURSO';
-      body.innerHTML=''; dl.style.display='none';
+      body.innerHTML=''; dl.style.display='none'; delBtn.style.display='inline-flex';
       const src = rec.dataUrl || rec.url || '';
       if(tipo==='video'){
         icon.textContent='▶️';
@@ -427,9 +461,12 @@ Error generating stack: `+u.message+`
           dl.href=rec.dataUrl; dl.download=rec.fileName||'video.mp4'; dl.style.display='inline-flex';
         }else{
           const yt = transYT(src);
-          if(yt.includes('youtube.com/embed')) body.innerHTML=`<iframe src="${yt}" allowfullscreen allow="autoplay"></iframe>`;
+          if(yt.includes('youtube.com/embed')) body.innerHTML=`<iframe src="${yt}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
           else body.innerHTML=`<video src="${src}" controls autoplay style="width:100%;height:100%;background:black"></video>`;
         }
+      }else if(tipo==='youtube'){
+        icon.textContent='▶️';
+        body.innerHTML=`<iframe src="${transYT(src)}" allowfullscreen allow="autoplay; encrypted-media" style="width:100%;height:100%"></iframe>`;
       }else if(tipo==='pdf'){
         icon.textContent='📄';
         if(rec.dataUrl){
@@ -441,7 +478,7 @@ Error generating stack: `+u.message+`
       }else if(tipo==='ppt'){
         icon.textContent='📊';
         if(rec.dataUrl){
-          body.innerHTML=`<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;padding:20px;text-align:center;font-family:Outfit"><div style="font-size:48px">📊</div><div style="font-weight:900;font-size:16px;margin-top:10px;color:#150D33">${rec.fileName||rec.titulo}</div><div style="font-size:11px;font-weight:700;opacity:0.6;margin-top:6px;max-width:500px">PPT local: preview limitado. Descarga o súbelo a Drive para verlo 100% aquí.</div><div style="margin-top:16px;display:flex;gap:10px"><a href="${rec.dataUrl}" download="${rec.fileName||'presentacion.pptx'}" style="background:#150D33;color:#FFB800;border-radius:999px;padding:10px 18px;font-weight:800;font-size:11px;text-decoration:none;border:2px solid #FFB800">⬇️ DESCARGAR</a><button onclick="document.getElementById('ppt-try').style.display='block'" class="ceut-btn-visor">👁️ INTENTAR VER</button></div><iframe id="ppt-try" src="${rec.dataUrl}" style="display:none;width:100%;height:55%;margin-top:14px;border:2px solid #150D33;border-radius:12px"></iframe></div>`;
+          body.innerHTML=`<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;padding:20px;text-align:center;font-family:Outfit"><div style="font-size:48px">📊</div><div style="font-weight:900;font-size:16px;margin-top:10px;color:#150D33">${rec.fileName||rec.titulo}</div><div style="font-size:11px;font-weight:700;opacity:0.6;margin-top:6px;max-width:500px">PPT local: para ver 100% sin salir, súbelo a Drive y pega el link. Aquí puedes descargarlo.</div><div style="margin-top:16px;display:flex;gap:10px"><a href="${rec.dataUrl}" download="${rec.fileName||'presentacion.pptx'}" style="background:#150D33;color:#FFB800;border-radius:999px;padding:10px 18px;font-weight:800;font-size:11px;text-decoration:none;border:2px solid #FFB800">⬇️ DESCARGAR</a></div></div>`;
           dl.href=rec.dataUrl; dl.download=rec.fileName||'presentacion.pptx'; dl.style.display='inline-flex';
         }else{
           body.innerHTML=`<iframe src="${transDrive(src)}" style="width:100%;height:100%;background:white"></iframe>`;
@@ -450,9 +487,6 @@ Error generating stack: `+u.message+`
         icon.textContent='🖼️';
         body.innerHTML=`<img src="${src}" />`;
         if(rec.dataUrl){ dl.href=rec.dataUrl; dl.download=rec.fileName||'imagen.png'; dl.style.display='inline-flex'; }
-      }else if(tipo==='youtube'){
-        icon.textContent='▶️';
-        body.innerHTML=`<iframe src="${transYT(src)}" allowfullscreen allow="autoplay"></iframe>`;
       }else if(tipo==='drive'){
         icon.textContent='☁️';
         body.innerHTML=`<iframe src="${transDrive(src)}" style="width:100%;height:100%;background:white"></iframe>`;
@@ -464,12 +498,55 @@ Error generating stack: `+u.message+`
       document.body.style.overflow='hidden';
     }catch(e){ console.error(e); }
   };
+  
   window.cerrarVisorCEUT = function(){
     const modal=document.getElementById('ceut-visor-modal');
     const body=document.getElementById('ceut-visor-body');
     if(modal) modal.classList.remove('activo');
     document.body.style.overflow='';
     const v=body.querySelector('video'); if(v) v.pause();
+    recursoActualId=null;
+  };
+
+  window.eliminarRecursoCEUT = function(recId){
+    if(!confirm('¿ELIMINAR ESTE MATERIAL?\n\nSe borrará para maestro y alumno.\n¿Continuar?')) return;
+    try{
+      let subjects = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+      let encontrado=false;
+      subjects = subjects.map(clase=>{
+        if(clase.modulos){
+          clase.modulos = clase.modulos.map(mod=>{
+            if(mod.recursos){
+              const antes = mod.recursos.length;
+              mod.recursos = mod.recursos.filter(r=> r.id !== recId);
+              if(mod.recursos.length !== antes) encontrado=true;
+            }
+            return mod;
+          });
+        }
+        return clase;
+      });
+      if(encontrado){
+        localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
+        // Eliminar del DOM
+        document.querySelectorAll(`[data-vis="${recId}"]`).forEach(el=> el.remove());
+        window.cerrarVisorCEUT();
+        alert('✅ Material eliminado');
+        setTimeout(()=>location.reload(), 400);
+      }else{
+        alert('No se encontró el recurso');
+      }
+    }catch(e){ alert('Error eliminando: '+e.message); }
+  };
+
+  window.eliminarDesdeVisor = function(){
+    if(recursoActualId) window.eliminarRecursoCEUT(recursoActualId);
+  };
+
+  // MEJORA DETECCION YOUTUBE: si pegan youtube.com/watch lo convertimos auto
+  window.convertirYouTubeSiEsNecesario = function(url){
+    if(esYouTube(url)) return transYT(url);
+    return url;
   };
 
   function renderVisibleRecursos(){
@@ -479,7 +556,7 @@ Error generating stack: `+u.message+`
         (clase.modulos||[]).forEach(mod=>{
           (mod.recursos||[]).forEach(rec=>{
             if(!rec.dataUrl && !rec.url) return;
-            const all = Array.from(document.querySelectorAll('*')).filter(el=> el.textContent && rec.titulo && el.textContent.includes(rec.titulo.substring(0,Math.min(20, rec.titulo.length))) && el.textContent.length < 250 );
+            const all = Array.from(document.querySelectorAll('*')).filter(el=> el.textContent && rec.titulo && el.textContent.includes(rec.titulo.substring(0,Math.min(20, rec.titulo.length))) && el.textContent.length < 300 );
             all.forEach(el=>{
               let card = el.closest('div.rounded-\[12px\]') || el.closest('div[class*="rounded-[12px]"]') || el.closest('div[class*="border"]');
               if(!card) return;
@@ -487,28 +564,77 @@ Error generating stack: `+u.message+`
               let preview = document.createElement('div');
               preview.setAttribute('data-vis', rec.id);
               preview.style.cssText='margin-top:8px;border-radius:12px;overflow:hidden;border:2px solid #150D33;background:white;cursor:pointer;position:relative';
-              preview.onclick = ()=> window.abrirVisorCEUT(rec.id);
-              const tipo = (function(){ const n=(rec.fileName||'').toLowerCase(); const t=(rec.fileType||'').toLowerCase(); if(t.startsWith('video/')||/\.(mp4|mov|avi|webm)$/.test(n)) return 'video'; if(n.endsWith('.pdf')||t==='application/pdf') return 'pdf'; if(/\.(ppt|pptx)$/.test(n)) return 'ppt'; if(t.startsWith('image/')||/\.(jpg|png|webp|jpeg|gif)$/.test(n)) return 'img'; if((rec.url||'').includes('youtube.com/embed')) return 'yt'; if((rec.url||'').includes('drive.google.com')) return 'drive'; return 'otro'; })();
+              
+              const tipo = (function(){ 
+                const n=(rec.fileName||'').toLowerCase(); 
+                const t=(rec.fileType||'').toLowerCase(); 
+                const u=(rec.url||'').toLowerCase();
+                if(t.startsWith('video/')||/\.(mp4|mov|avi|webm)$/.test(n)) return 'video'; 
+                if(n.endsWith('.pdf')||t==='application/pdf') return 'pdf'; 
+                if(/\.(ppt|pptx)$/.test(n)) return 'ppt'; 
+                if(t.startsWith('image/')||/\.(jpg|png|webp|jpeg|gif)$/.test(n)) return 'img'; 
+                if(u.includes('youtube.com')||u.includes('youtu.be')) return 'youtube';
+                if(u.includes('drive.google.com')) return 'drive'; 
+                return 'otro'; 
+              })();
+
+              let contenidoPreview = '';
               if(rec.dataUrl){
                 if(tipo==='video'){
-                  preview.innerHTML=`<div style="position:relative"><video src="${rec.dataUrl}" muted style="width:100%;height:220px;object-fit:cover;background:black" preload="metadata"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(21,13,51,0.35)"><span style="background:#FFB800;color:#150D33;border-radius:999px;padding:8px 14px;font-family:Outfit;font-weight:900;font-size:11px">▶️ VER VIDEO EN PÁGINA</span></div></div><div style="padding:6px 10px;background:#150D33;color:#FFB800;font-family:Outfit;font-weight:800;font-size:8px;display:flex;justify-content:space-between"><span>▶️ ${rec.fileName||'VIDEO'}</span><span>CLICK PARA AMPLIAR</span></div>`;
+                  contenidoPreview=`<div style="position:relative"><video src="${rec.dataUrl}" muted style="width:100%;height:200px;object-fit:cover;background:black" preload="metadata"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(21,13,51,0.35)"><span style="background:#FFB800;color:#150D33;border-radius:999px;padding:8px 14px;font-family:Outfit;font-weight:900;font-size:11px">▶️ VER VIDEO EN PÁGINA</span></div></div>`;
                 }else if(tipo==='pdf'){
-                  preview.innerHTML=`<div style="height:180px;background:#F6F3FF;display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative"><div style="font-size:32px">📄</div><div style="font-family:Outfit;font-weight:800;font-size:11px;margin-top:6px;color:#150D33">${rec.fileName||'PDF'}</div><div style="margin-top:8px;background:#150D33;color:#FFB800;border-radius:999px;padding:6px 12px;font-weight:800;font-size:9px">👁️ VER PDF EN PÁGINA</div></div><div style="padding:6px 10px;background:#150D33;color:#FFB800;font-family:Outfit;font-weight:800;font-size:8px;display:flex;justify-content:space-between"><span>📄 ${rec.fileName}</span><span>CLICK PARA AMPLIAR</span></div>`;
+                  contenidoPreview=`<div style="height:160px;background:#F6F3FF;display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:32px">📄</div><div style="font-family:Outfit;font-weight:800;font-size:11px;margin-top:6px;color:#150D33">${rec.fileName||'PDF'}</div><div style="margin-top:8px;background:#150D33;color:#FFB800;border-radius:999px;padding:6px 12px;font-weight:800;font-size:9px">👁️ VER PDF EN PÁGINA</div></div>`;
                 }else if(tipo==='ppt'){
-                  preview.innerHTML=`<div style="padding:14px;text-align:center;background:linear-gradient(135deg,#FFF7ED,#FFEDD5);"><div style="font-size:28px">📊</div><div style="font-family:Outfit;font-weight:800;font-size:11px;margin-top:8px;color:#150D33">${rec.fileName}</div><div style="display:inline-block;margin-top:8px;background:#150D33;color:#FFB800;border-radius:999px;padding:6px 12px;font-weight:800;font-size:9px">👁️ VER PRESENTACIÓN EN PÁGINA</div></div>`;
+                  contenidoPreview=`<div style="padding:14px;text-align:center;background:linear-gradient(135deg,#FFF7ED,#FFEDD5);"><div style="font-size:28px">📊</div><div style="font-family:Outfit;font-weight:800;font-size:11px;margin-top:8px;color:#150D33">${rec.fileName}</div><div style="display:inline-block;margin-top:8px;background:#150D33;color:#FFB800;border-radius:999px;padding:6px 12px;font-weight:800;font-size:9px">👁️ VER PRESENTACIÓN</div></div>`;
                 }else if(tipo==='img'){
-                  preview.innerHTML=`<img src="${rec.dataUrl}" style="width:100%;max-height:260px;object-fit:contain"/><div style="padding:6px 10px;background:#150D33;color:#FFB800;font-family:Outfit;font-weight:800;font-size:8px;display:flex;justify-content:space-between"><span>🖼️ ${rec.fileName}</span><span>CLICK PARA AMPLIAR</span></div>`;
+                  contenidoPreview=`<img src="${rec.dataUrl}" style="width:100%;max-height:240px;object-fit:contain"/>`;
                 }else{
-                  preview.innerHTML=`<div style="padding:14px;text-align:center"><div style="font-family:Outfit;font-weight:800;font-size:11px">${rec.fileName}</div><div style="margin-top:6px;background:#150D33;color:#FFB800;border-radius:999px;padding:6px 12px;font-weight:800;font-size:9px;display:inline-block">👁️ VER EN PÁGINA</div></div>`;
+                  contenidoPreview=`<div style="padding:14px;text-align:center"><div style="font-family:Outfit;font-weight:800;font-size:11px">${rec.fileName}</div><div style="margin-top:6px;background:#150D33;color:#FFB800;border-radius:999px;padding:6px 12px;font-weight:800;font-size:9px;display:inline-block">👁️ VER EN PÁGINA</div></div>`;
                 }
               }else if(rec.url){
-                if(rec.url.includes('youtube.com/embed')){
-                  preview.innerHTML=`<div style="position:relative"><iframe src="${rec.url}" style="width:100%;height:200px;border:none;pointer-events:none"></iframe><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(21,13,51,0.2)"><span style="background:#FFB800;color:#150D33;border-radius:999px;padding:8px 14px;font-family:Outfit;font-weight:900;font-size:11px">▶️ VER EN PÁGINA</span></div></div><div style="padding:6px 10px;background:#150D33;color:#FFB800;font-family:Outfit;font-weight:800;font-size:8px">▶️ ${rec.titulo}</div>`;
-                }else if(rec.url.includes('drive.google.com')){
-                  preview.innerHTML=`<div style="position:relative"><iframe src="${rec.url}" style="width:100%;height:180px;border:none;pointer-events:none"></iframe><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(21,13,51,0.15)"><span style="background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:999px;padding:8px 14px;font-family:Outfit;font-weight:900;font-size:10px">☁️ VER DRIVE EN PÁGINA</span></div></div><div style="padding:6px 10px;background:#150D33;color:#FFB800;font-family:Outfit;font-weight:800;font-size:8px">☁️ ${rec.titulo}</div>`;
+                // YOUTUBE ESPECIAL - SE VE DIRECTO EN PÁGINA
+                if(tipo==='youtube'){
+                  const embedUrl = (function(u){
+                    try{
+                      let id=null;
+                      if(u.includes('youtu.be/')) id=u.split('youtu.be/')[1].split(/[?&\/]/)[0];
+                      else if(u.includes('watch')){ try{id=new URL(u).searchParams.get('v')}catch(e){} }
+                      else if(u.includes('/embed/')) return u;
+                      else if(u.includes('/shorts/')) id=u.split('/shorts/')[1].split(/[?&\/]/)[0];
+                      if(id) return `https://www.youtube.com/embed/${id}`;
+                      return u;
+                    }catch(e){return u}
+                  })(rec.url);
+                  contenidoPreview=`<div style="position:relative"><iframe src="${embedUrl}" style="width:100%;height:200px;border:none;pointer-events:none" loading="lazy"></iframe><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(21,13,51,0.15)"><span style="background:#FF0000;color:white;border-radius:999px;padding:8px 14px;font-family:Outfit;font-weight:900;font-size:11px">▶️ YOUTUBE - VER EN PÁGINA</span></div></div>`;
+                }else if(tipo==='drive'){
+                  contenidoPreview=`<div style="position:relative"><iframe src="${rec.url}" style="width:100%;height:180px;border:none;pointer-events:none"></iframe><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(21,13,51,0.15)"><span style="background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:999px;padding:8px 14px;font-family:Outfit;font-weight:900;font-size:10px">☁️ VER DRIVE EN PÁGINA</span></div></div>`;
+                }else{
+                  contenidoPreview=`<div style="padding:14px;text-align:center"><div style="font-size:20px">🔗</div><div style="font-family:Outfit;font-weight:800;font-size:10px;margin-top:6px">${rec.titulo}</div></div>`;
                 }
               }
-              if(preview.innerHTML) card.appendChild(preview);
+
+              // FOOTER CON BOTONES ELIMINAR + VER - MISMO DISEÑO
+              const footer = `<div style="padding:8px 10px;background:#150D33;display:flex;justify-content:space-between;align-items:center;gap:6px">
+                <div style="color:#FFB800;font-family:Outfit;font-weight:800;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${tipo==='youtube'?'▶️ YOUTUBE': tipo==='video'?'▶️ VIDEO' : tipo==='pdf'?'📄 PDF' : tipo==='ppt'?'📊 PPT' : '📎'} ${rec.fileName||rec.titulo||''}</div>
+                <div style="display:flex;gap:6px;flex-shrink:0">
+                  <button class="btn-ver" style="background:#FFB800;color:#150D33;border:none;border-radius:999px;padding:5px 10px;font-weight:900;font-size:9px;cursor:pointer">👁️ VER</button>
+                  <button class="btn-del" style="background:#DC2626;color:white;border:1.5px solid #FFB800;border-radius:999px;padding:5px 8px;font-weight:900;font-size:9px;cursor:pointer">🗑️</button>
+                </div>
+              </div>`;
+
+              preview.innerHTML = contenidoPreview + footer;
+
+              // Eventos
+              preview.querySelector('.btn-ver').onclick = (e)=>{ e.stopPropagation(); window.abrirVisorCEUT(rec.id); };
+              preview.querySelector('.btn-del').onclick = (e)=>{ e.stopPropagation(); window.eliminarRecursoCEUT(rec.id); };
+              preview.onclick = (e)=>{
+                // Si clickean fuera de botones, abrir visor
+                if(!e.target.closest('.btn-ver') && !e.target.closest('.btn-del')){
+                  window.abrirVisorCEUT(rec.id);
+                }
+              };
+
+              card.appendChild(preview);
             });
           });
         });
@@ -516,7 +642,40 @@ Error generating stack: `+u.message+`
     }catch(e){ console.log('renderVisible error', e); }
   }
   setInterval(renderVisibleRecursos, 2000);
-  setTimeout(renderVisibleRecursos, 1200);
+  setTimeout(renderVisibleRecursos, 1000);
+
+  // INTERCEPTAR GUARDADO DE RECURSOS PARA CONVERTIR YOUTUBE AUTO A EMBED
+  const _origSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function(key, value){
+    try{
+      if(key==='ceut_subjects_v2'){
+        let data = JSON.parse(value);
+        data.forEach(clase=>{
+          (clase.modulos||[]).forEach(mod=>{
+            (mod.recursos||[]).forEach(rec=>{
+              if(rec.url && (rec.url.includes('youtube.com') || rec.url.includes('youtu.be'))){
+                // Convertir watch a embed para que se visualice en página
+                try{
+                  let id=null;
+                  const u = rec.url.trim();
+                  if(u.includes('youtu.be/')) id=u.split('youtu.be/')[1].split(/[?&\/]/)[0];
+                  else if(u.includes('watch')){ id=new URL(u).searchParams.get('v'); }
+                  else if(u.includes('/shorts/')) id=u.split('/shorts/')[1].split(/[?&\/]/)[0];
+                  else if(u.includes('/embed/')) id=null;
+                  if(id){
+                    rec.url = `https://www.youtube.com/embed/${id}`;
+                  }
+                }catch(e){}
+              }
+            });
+          });
+        });
+        value = JSON.stringify(data);
+      }
+    }catch(e){}
+    return _origSetItem(key, value);
+  };
+
 })();
 </script>
 
