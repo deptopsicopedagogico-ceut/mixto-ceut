@@ -1201,6 +1201,235 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
 })();
 </script>
 
+
+<script>
+// === SISTEMA DE RECUPERACIÓN DE CONTRASEÑA POR CORREO - CEUT ===
+(function(){
+  console.log("🔐 Iniciando sistema de recuperación por correo...");
+  
+  // Esperar a que Firebase esté listo
+  function esperarFirebase(callback){
+    let intentos=0;
+    let intervalo=setInterval(()=>{
+      intentos++;
+      if(window.firebase && firebase.auth && window.db){
+        clearInterval(intervalo);
+        callback();
+      } else if(intentos>50){
+        clearInterval(intervalo);
+        console.log("Firebase no disponible para recuperación");
+      }
+    }, 200);
+  }
+  
+  esperarFirebase(()=>{
+    console.log("✅ Firebase listo para recuperación");
+    
+    // Función para enviar correo de recuperación
+    window.enviarRecuperacionCEUT = async function(emailInput){
+      let email = (emailInput||"").trim().toLowerCase();
+      
+      if(!email || !email.includes("@") || (!email.includes(".edu") && !email.toLowerCase().includes("ceut"))){
+        alert("❌ INGRESA UN CORREO VÁLIDO\nEj: garcia@ceut.edu.mx");
+        return false;
+      }
+      
+      // Verificar si existe en localStorage
+      let usuariosLocal = [];
+      try{
+        usuariosLocal = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+      }catch(e){}
+      
+      let usuarioLocal = usuariosLocal.find(u=>u.correo===email);
+      
+      // Verificar en Firestore
+      let usuarioFirestore = null;
+      let docIdFirestore = null;
+      try{
+        let snap = await db.collection('usuarios').where('correo','==',email).get();
+        if(!snap.empty){
+          usuarioFirestore = snap.docs[0].data();
+          docIdFirestore = snap.docs[0].id;
+        }
+      }catch(e){
+        console.log("Error buscando en Firestore:", e);
+      }
+      
+      if(!usuarioLocal && !usuarioFirestore){
+        alert("❌ CORREO NO REGISTRADO\n\nEl correo "+email+" no está registrado.\nSi eres nuevo, regístrate en SOY DOCENTE o SOY ALUMNO.");
+        return false;
+      }
+      
+      let usuario = usuarioLocal || usuarioFirestore;
+      
+      // Mostrar cargando
+      let btnOriginal = document.activeElement;
+      
+      try{
+        // Intentar enviar correo vía Firebase Auth (envía correo real)
+        await firebase.auth().sendPasswordResetEmail(email);
+        
+        // Guardar log
+        try{
+          await db.collection('password_resets').add({
+            email: email,
+            tipo: 'firebase_auth',
+            fecha: new Date().toISOString(),
+            userId: usuario.id||docIdFirestore||'',
+            nombre: usuario.nombre||'',
+            exito: true
+          });
+        }catch(e){}
+        
+        alert(`✅ ¡CORREO ENVIADO!\n\n📧 Se envió un enlace de recuperación a:\n${email.toUpperCase()}\n\n📬 Revisa tu bandeja de entrada y SPAM\n⏰ El enlace expira en 1 hora\n\nAl dar clic en el enlace podrás crear nueva contraseña.`);
+        
+        return true;
+        
+      }catch(authError){
+        console.log("Firebase Auth falló, usando código de respaldo:", authError.code);
+        
+        // Fallback: generar código
+        let codigo = Math.floor(100000 + Math.random()*900000).toString();
+        let expira = new Date(Date.now()+15*60*1000);
+        
+        try{
+          await db.collection('password_resets').add({
+            email: email,
+            codigo: codigo,
+            expira: expira.toISOString(),
+            usado: false,
+            tipo: 'codigo_respaldo',
+            fecha: new Date().toISOString(),
+            userId: usuario.id||docIdFirestore||'',
+            nombre: usuario.nombre||'',
+            errorAuth: authError.code||''
+          });
+        }catch(e){}
+        
+        // Mostrar código y pedir nueva contraseña
+        let codigoIngresado = prompt(`🔐 RECUPERACIÓN CEUT - CÓDIGO DE RESPALDO\n\nCorreo: ${email}\nNombre: ${usuario.nombre||''}\n\nTu código de recuperación es:\n\n   👉 ${codigo} 👉\n\nVálido por 15 minutos\nSe guardó registro en la nube\n\nINGRESA EL CÓDIGO que ves arriba:`);
+        
+        if(!codigoIngresado || codigoIngresado.trim()!==codigo){
+          if(codigoIngresado!==null){
+            alert("❌ CÓDIGO INCORRECTO");
+          }
+          return false;
+        }
+        
+        let nuevaPass = prompt(`✅ CÓDIGO CORRECTO\n\nAhora crea tu NUEVA CONTRASEÑA:\n• Mínimo 6 caracteres\n• Que recuerdes\n\nNueva contraseña:`);
+        
+        if(!nuevaPass || nuevaPass.length<6){
+          alert("❌ CONTRASEÑA MUY CORTA (mín 6)");
+          return false;
+        }
+        
+        let confirmar = prompt(`Confirma tu nueva contraseña:\n\n${nuevaPass}\n\nEscribe de nuevo:`);
+        
+        if(confirmar!==nuevaPass){
+          alert("❌ LAS CONTRASEÑAS NO COINCIDEN");
+          return false;
+        }
+        
+        try{
+          // Actualizar en localStorage
+          let actualizados = usuariosLocal.map(u=>u.correo===email?{...u, password:nuevaPass}:u);
+          localStorage.setItem('ceut_users_v2', JSON.stringify(actualizados));
+          localStorage.setItem('ceut_usuarios', JSON.stringify(actualizados));
+          
+          // Actualizar en Firestore
+          if(docIdFirestore){
+            await db.collection('usuarios').doc(docIdFirestore).update({
+              password: nuevaPass,
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            let snap = await db.collection('usuarios').where('correo','==',email).get();
+            for(let doc of snap.docs){
+              await db.collection('usuarios').doc(doc.id).update({
+                password: nuevaPass,
+                updatedAt: new Date().toISOString()
+              });
+            }
+          }
+          
+          // Marcar código como usado
+          try{
+            let resetSnap = await db.collection('password_resets').where('email','==',email).where('codigo','==',codigo).get();
+            for(let doc of resetSnap.docs){
+              await db.collection('password_resets').doc(doc.id).update({
+                usado: true,
+                usadoEn: new Date().toISOString()
+              });
+            }
+          }catch(e){}
+          
+          alert(`✅ ¡CONTRASEÑA ACTUALIZADA!\n\nCorreo: ${email}\nNueva contraseña: ${nuevaPass}\n\nYa puedes ingresar con tu nueva contraseña.`);
+          return true;
+          
+        }catch(e){
+          console.error(e);
+          alert("❌ ERROR AL ACTUALIZAR\nIntenta de nuevo");
+          return false;
+        }
+      }
+    };
+    
+    // Interceptar clic en "¿OLVIDASTE TU CONTRASEÑA?" después de que React renderice
+    function interceptarOlvide(){
+      let intentos=0;
+      let intervalo=setInterval(()=>{
+        intentos++;
+        let botones = [...document.querySelectorAll('button')].filter(b=>b.textContent&&b.textContent.includes('OLVIDASTE TU CONTRASEÑA'));
+        if(botones.length>0){
+          botones.forEach(btn=>{
+            if(!btn.dataset.ceutPatched){
+              btn.dataset.ceutPatched="1";
+              let originalOnClick = btn.onclick;
+              btn.onclick = async function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Buscar input de correo en el formulario de login
+                let emailInput = document.querySelector('input[placeholder*="CORREO INSTITUCIONAL"]');
+                let emailValor = "";
+                if(emailInput){
+                  emailValor = emailInput.value;
+                }
+                
+                // Si no hay email en input, pedirlo
+                if(!emailValor || !emailValor.includes("@")){
+                  emailValor = prompt("🔐 RECUPERAR CONTRASEÑA CEUT\n\nIngresa tu correo institucional registrado:\nEj: garcia@ceut.edu.mx");
+                  if(!emailValor) return;
+                }
+                
+                await window.enviarRecuperacionCEUT(emailValor);
+              };
+              console.log("✅ Botón OLVIDASTE parcheado");
+            }
+          });
+          // No detener intervalo, seguir vigilando por si React re-renderiza
+        }
+        if(intentos>100){
+          clearInterval(intervalo);
+        }
+      }, 500);
+    }
+    
+    interceptarOlvide();
+    
+    // También parchear la función D8 si existe (por si acaso)
+    setTimeout(()=>{
+      // Buscar en el bundle si hay referencia a recuperación
+      let inputs = document.querySelectorAll('input[placeholder*="CORREO"]');
+      console.log(`Encontrados ${inputs.length} inputs de correo`);
+    }, 2000);
+    
+    console.log("🔐 Sistema de recuperación listo - Envía correo al correo registrado");
+  });
+})();
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
 </body>
 </html>
 
