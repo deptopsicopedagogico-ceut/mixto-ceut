@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 🔥 FIREBASE NUBE ACTIVA - CONFIGURACIÓN -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-// ⬇️⬇️⬇️ REEMPLAZA ESTO CON TU CONFIG DE FIREBASE ⬇️⬇️⬇️
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// === MIXCEUT NUBE DEFINITIVA - MIGRA TUS CLASES EXISTENTES ===
 const firebaseConfig = {
   apiKey: "AIzaSyB9va23hvQOgu2RnaPysKic9uuFEAO675o",
   authDomain: "mixceut.firebaseapp.com",
@@ -15,154 +13,197 @@ const firebaseConfig = {
   messagingSenderId: "81153498875",
   appId: "1:81153498875:web:7cc2803c20c13bc3705a5e"
 };
-// ⬆️⬆️⬆️ FIN CONFIG ⬆️⬆️⬆️
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+window.db = db;
+window.__NUBE_ACTIVA__ = true;
+window.__CLASES_NUBE__ = [];
+window.__USUARIOS_NUBE__ = [];
 
-let db = null;
-let nubeActiva = false;
-
-try {
-  if (!firebaseConfig.apiKey.includes("DEMO_REEMPLAZA")) {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    nubeActiva = true;
-    window.__NUBE_ACTIVA__ = true;
-    window.__FIREBASE_DB__ = db;
-    console.log("🔥 NUBE ACTIVA - Firebase conectado:", firebaseConfig.projectId);
-    
-    // Toast verde
-    setTimeout(()=>{
-      const toast = document.createElement('div');
-      toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#10B981;color:white;padding:14px 22px;border-radius:14px;font-weight:900;z-index:99999;box-shadow:0 8px 24px rgba(16,185,129,0.5);font-family:system-ui;font-size:13px;';
-      toast.innerHTML = '🔥 NUBE ACTIVA<br><span style="font-size:11px;font-weight:600">Sincronizado entre dispositivos</span>';
-      document.body.appendChild(toast);
-      setTimeout(()=>toast.remove(), 5000);
-    }, 2500);
-  } else {
-    console.warn("⚠️ MODO LOCAL - Configura Firebase para activar nube. Ver INSTRUCCIONES");
-    window.__NUBE_ACTIVA__ = false;
+function crearIndicador(texto, color){
+  let ind = document.getElementById('nube-status');
+  if(!ind){
+    ind = document.createElement('div');
+    ind.id = 'nube-status';
+    ind.style.cssText = 'position:fixed;top:10px;right:10px;background:'+color+';color:white;padding:10px 16px;border-radius:20px;font-weight:800;z-index:99999;font-family:system-ui;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+    document.addEventListener('DOMContentLoaded', ()=>{ if(!document.getElementById('nube-status')) document.body.appendChild(ind); });
+    if(document.body) document.body.appendChild(ind);
   }
-} catch(e) {
-  console.error("❌ Error Firebase:", e);
-  window.__NUBE_ACTIVA__ = false;
+  ind.textContent = texto;
+  ind.style.background = color;
+  return ind;
 }
 
-window.nube = {
-  async guardar(coleccion, id, datos) {
-    if (!db || !nubeActiva) return false;
-    try {
-      // Limpiar datos no serializables
-      const cleanData = JSON.parse(JSON.stringify(datos));
-      await setDoc(doc(db, coleccion, id), cleanData, {merge:true});
-      console.log(`☁️ Guardado en nube: ${coleccion}/${id}`);
-      return true;
-    } catch(e) {
-      console.error("Error guardar nube:", e);
-      return false;
-    }
-  },
-  async obtener(coleccion) {
-    if (!db || !nubeActiva) return null;
-    try {
-      const snap = await getDocs(collection(db, coleccion));
-      let arr = [];
-      snap.forEach(d=>arr.push(d.data()));
-      console.log(`☁️ Obtenidos de nube: ${coleccion} -> ${arr.length} registros`);
-      return arr;
-    } catch(e) {
-      console.error("Error obtener nube:", e);
-      return null;
-    }
-  },
-  async eliminar(coleccion, id) {
-    if (!db || !nubeActiva) return false;
-    try { await deleteDoc(doc(db, coleccion, id)); return true; } catch(e){ return false; }
-  },
-  escuchar(coleccion, callback) {
-    if (!db || !nubeActiva) return null;
-    try {
-      return onSnapshot(collection(db, coleccion), (snap)=>{
-        let arr = [];
-        snap.forEach(d=>arr.push(d.data()));
-        callback(arr);
-      });
-    } catch(e){ return null; }
-  }
-};
-</script>
+async function guardarEnNube(coleccion, id, datos){
+  try{
+    let clean = JSON.parse(JSON.stringify(datos));
+    await db.collection(coleccion).doc(id).set(clean, {merge:true});
+    console.log('☁️ Guardado nube: '+coleccion+'/'+id);
+    return true;
+  }catch(e){ console.error('Error guardar nube', e); return false; }
+}
 
-<script>
-// Sincronización automática localStorage <-> Nube
-(function(){
-  const origSetItem = localStorage.setItem.bind(localStorage);
-  const origGetItem = localStorage.getItem.bind(localStorage);
-  
-  localStorage.setItem = function(key, value){
-    origSetItem(key, value);
-    // Sincronizar a nube si está activa
-    if(window.__NUBE_ACTIVA__ && window.nube && window.nube.guardar){
-      try {
-        // Solo sincronizar claves relevantes
-        if(key.startsWith('ceut_') || ['t','n','P','cursos','usuarios','clases'].includes(key) || key.includes('clase') || key.includes('curso')){
-          let data = JSON.parse(value);
-          if(Array.isArray(data)){
-            data.forEach(item=>{
-              if(item && item.id){
-                let coleccion = (item.role || item.correo || item.clases) ? 'usuarios' : 'clases';
-                // Guardar cada item como documento
-                window.nube.guardar(coleccion, item.id, item);
-              }
-            });
-          } else if(data && typeof data === 'object' && data.id){
-            let coleccion = (data.role || data.correo) ? 'usuarios' : 'clases';
-            window.nube.guardar(coleccion, data.id, data);
-          }
+async function migrarLocalANube(){
+  try{
+    let clases1 = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
+    let clases2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+    let usuarios1 = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
+    let usuarios2 = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+    
+    let todasClases = [...clases1, ...clases2];
+    let clasesUnicas = [];
+    let ids = new Set();
+    todasClases.forEach(c=>{ if(c&&c.id&&!ids.has(c.id)){ ids.add(c.id); clasesUnicas.push(c); } });
+    
+    let todosUsuarios = [...usuarios1, ...usuarios2];
+    let usuariosUnicos = [];
+    let idsU = new Set();
+    todosUsuarios.forEach(u=>{ if(u&&u.id&&!idsU.has(u.id)){ idsU.add(u.id); usuariosUnicos.push(u); } });
+    
+    console.log('📤 Migrando a nube MIXCEUT: '+clasesUnicas.length+' clases, '+usuariosUnicos.length+' usuarios');
+    
+    if(clasesUnicas.length>0 || usuariosUnicos.length>0){
+      crearIndicador('☁️ SUBIENDO '+clasesUnicas.length+' CURSOS A NUBE...', '#F59E0B');
+      for(let c of clasesUnicas){ await guardarEnNube('clases', c.id, c); }
+      for(let u of usuariosUnicos){ await guardarEnNube('usuarios', u.id, u); }
+      // Compatibilidad ceut_data
+      if(clasesUnicas.length>0){
+        await db.collection('ceut_data').doc('subjects').set({data: clasesUnicas, updatedAt: new Date().toISOString()}, {merge:true});
+      }
+      if(usuariosUnicos.length>0){
+        await db.collection('ceut_data').doc('users').set({data: usuariosUnicos, updatedAt: new Date().toISOString()}, {merge:true});
+      }
+      console.log('✅ Migración completa');
+    }
+    return {clases: clasesUnicas, usuarios: usuariosUnicos};
+  }catch(e){ console.error('Error migración', e); return {clases:[], usuarios:[]}; }
+}
+
+async function cargarNube(){
+  crearIndicador('☁️ CONECTANDO NUBE MIXCEUT...', '#F59E0B');
+  try{
+    // Primero migrar lo local existente a nube para que aparezcan tus clases ya creadas
+    await migrarLocalANube();
+    
+    // Luego cargar todo desde nube (incluye lo de otros dispositivos)
+    let [cSnap, uSnap] = await Promise.all([db.collection('clases').get(), db.collection('usuarios').get()]);
+    let clasesNube=[], usuariosNube=[];
+    cSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; clasesNube.push(data); });
+    uSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; usuariosNube.push(data); });
+    
+    console.log('🔥 NUBE MIXCEUT: '+clasesNube.length+' clases, '+usuariosNube.length+' usuarios');
+    
+    let clasesLocal = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
+    let usuariosLocal = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
+    
+    // Guardar en localStorage
+    if(clasesNube.length>0){
+      localStorage.setItem('ceut_clases', JSON.stringify(clasesNube));
+      localStorage.setItem('ceut_subjects_v2', JSON.stringify(clasesNube));
+      window.__CLASES_NUBE__ = clasesNube;
+    }
+    if(usuariosNube.length>0){
+      localStorage.setItem('ceut_usuarios', JSON.stringify(usuariosNube));
+      localStorage.setItem('ceut_users_v2', JSON.stringify(usuariosNube));
+      window.__USUARIOS_NUBE__ = usuariosNube;
+    }
+    
+    crearIndicador('☁️ NUBE MIXCEUT ACTIVA • '+clasesNube.length+' cursos • '+usuariosNube.length+' usuarios', '#10B981');
+    
+    // Toast
+    setTimeout(()=>{
+      let toast=document.createElement('div');
+      toast.style.cssText='position:fixed;top:50px;right:10px;background:#150D33;color:#FFB800;padding:12px 18px;border-radius:12px;font-weight:800;z-index:99999;font-family:system-ui;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);border:2px solid #FFB800;';
+      toast.innerHTML='🔥 NUBE MIXCEUT CONECTADA<br><span style="color:white;font-size:11px;font-weight:600">'+clasesNube.length+' cursos • '+usuariosNube.length+' usuarios<br>Tus clases ya creadas están en la nube</span>';
+      document.body.appendChild(toast);
+      setTimeout(()=>toast.remove(), 6000);
+    }, 800);
+    
+    // Si había 0 local y ahora hay datos en nube, recargar para que React los lea
+    if((clasesLocal.length===0 && clasesNube.length>0) || (usuariosLocal.length===0 && usuariosNube.length>0)){
+      console.log('🔥 Primera carga, recargando para aplicar datos de nube...');
+      setTimeout(()=>{
+        if(confirm('🔥 NUBE MIXCEUT: Se cargaron '+clasesNube.length+' cursos y '+usuariosNube.length+' usuarios desde la nube (incluye tus clases ya creadas).\n\n¿Recargar para ver todos los datos?')){
+          location.reload();
         }
-      } catch(e){}
+      }, 1500);
+    }
+    
+    // Tiempo real
+    db.collection('clases').onSnapshot(snap=>{
+      let clases=[]; snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; clases.push(data); });
+      if(clases.length>0){
+        localStorage.setItem('ceut_clases', JSON.stringify(clases));
+        localStorage.setItem('ceut_subjects_v2', JSON.stringify(clases));
+        window.__CLASES_NUBE__ = clases;
+        console.log('🔄 Clases tiempo real:', clases.length);
+      }
+    });
+    db.collection('usuarios').onSnapshot(snap=>{
+      let usuarios=[]; snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; usuarios.push(data); });
+      if(usuarios.length>0){
+        localStorage.setItem('ceut_usuarios', JSON.stringify(usuarios));
+        localStorage.setItem('ceut_users_v2', JSON.stringify(usuarios));
+        window.__USUARIOS_NUBE__ = usuarios;
+        console.log('🔄 Usuarios tiempo real:', usuarios.length);
+      }
+    });
+    
+    return {clases: clasesNube, usuarios: usuariosNube};
+  }catch(e){
+    console.error('❌ Error nube:', e);
+    crearIndicador('❌ ERROR NUBE: '+e.message.substring(0,30), '#EF4444');
+    return {clases:[], usuarios:[]};
+  }
+}
+
+window.validarClaveNube = async function(claveRaw){
+  let clave = claveRaw.trim().toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9-]/g,'');
+  if(!clave) return null;
+  try{
+    let clasesLocal = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
+    let clasesV2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+    let todas = [...clasesLocal, ...clasesV2, ...(window.__CLASES_NUBE__||[])];
+    let found = todas.find(c=>c.clave===clave || c.clave.replace(/-/g,'')===clave.replace(/-/g,''));
+    if(found) return found;
+    console.log('🔍 Buscando clave en nube:', clave);
+    let snap = await db.collection('clases').where('clave','==',clave).get();
+    if(!snap.empty){ let data=snap.docs[0].data(); console.log('✅ Clave encontrada en nube:', data.nombre); return data; }
+    let all = await db.collection('clases').get();
+    let f=null; all.forEach(d=>{ let data=d.data(); if(data.clave && data.clave.replace(/-/g,'')===clave.replace(/-/g,'')) f=data; });
+    return f;
+  }catch(e){ return null; }
+};
+
+window.guardarEnNube = guardarEnNube;
+window.cargarNube = cargarNube;
+
+(function(){
+  const orig=localStorage.setItem.bind(localStorage);
+  localStorage.setItem=function(k,v){
+    orig(k,v);
+    if(k==='ceut_clases'||k==='ceut_subjects_v2'||k==='ceut_usuarios'||k==='ceut_users_v2'){
+      try{
+        let arr=JSON.parse(v);
+        if(Array.isArray(arr)){
+          arr.forEach(item=>{
+            if(item&&item.id){
+              let col=(item.correo!==undefined||item.clases!==undefined||item.role)?'usuarios':'clases';
+              guardarEnNube(col, item.id, item);
+              if(col==='clases'){
+                db.collection('ceut_data').doc('subjects').set({data: arr, updatedAt: new Date().toISOString()}, {merge:true});
+              }else{
+                db.collection('ceut_data').doc('users').set({data: arr, updatedAt: new Date().toISOString()}, {merge:true});
+              }
+            }
+          });
+        }
+      }catch(e){}
     }
   };
-  
-  // Cargar desde nube al iniciar si hay datos
-  window.addEventListener('load', ()=>{
-    setTimeout(async ()=>{
-      if(!window.__NUBE_ACTIVA__ || !window.nube) {
-        console.log("Modo local - sin nube");
-        return;
-      }
-      
-      console.log("🔥 Intentando cargar datos desde nube...");
-      const clasesNube = await window.nube.obtener('clases');
-      const usuariosNube = await window.nube.obtener('usuarios');
-      
-      if(clasesNube && clasesNube.length > 0){
-        const clasesLocal = JSON.parse(origGetItem('ceut_clases') || '[]');
-        console.log(`Nube: ${clasesNube.length} clases, Local: ${clasesLocal.length} clases`);
-        
-        // Si nube tiene más datos que local, preguntar si cargar
-        if(clasesNube.length > clasesLocal.length || clasesLocal.length === 0){
-          if(confirm(`🔥 NUBE ACTIVA\n\nSe encontraron ${clasesNube.length} cursos en la nube.\nTienes ${clasesLocal.length} local.\n\n¿Cargar datos desde la nube? (Recomendado para ver registros de otros dispositivos)`)){
-            origSetItem('ceut_clases', JSON.stringify(clasesNube));
-            if(usuariosNube && usuariosNube.length > 0){
-              origSetItem('ceut_usuarios', JSON.stringify(usuariosNube));
-            }
-            location.reload();
-          }
-        }
-      }
-      
-      // Escuchar cambios en tiempo real
-      if(window.nube.escuchar){
-        window.nube.escuchar('clases', (datos)=>{
-          console.log("🔥 Cambio en nube - clases:", datos.length);
-          // Opcional: auto-actualizar
-        });
-        window.nube.escuchar('usuarios', (datos)=>{
-          console.log("🔥 Cambio en nube - usuarios:", datos.length);
-        });
-      }
-      
-    }, 3000);
-  });
 })();
+
+cargarNube();
 </script>
 
 
@@ -350,43 +391,6 @@ Mientras tanto funciona en modo LOCAL.');
       location.reload();
     }
   }catch(e){}
-})();
-</script>
-
-<script>
-// 🔥 SYNC COMPLETO MIXCEUT - Guarda todo el estado
-(function(){
-  async function syncTodoANube(){
-    if(!window.__NUBE_ACTIVA__ || !window.nube) return;
-    try {
-      const clases = JSON.parse(localStorage.getItem('ceut_clases') || '[]');
-      const usuarios = JSON.parse(localStorage.getItem('ceut_usuarios') || '[]');
-      
-      for(let c of clases){
-        await window.nube.guardar('clases', c.id, c);
-      }
-      for(let u of usuarios){
-        await window.nube.guardar('usuarios', u.id, u);
-      }
-      console.log(`🔥 Sync completo: ${clases.length} clases, ${usuarios.length} usuarios a nube mixceut`);
-    } catch(e){ console.error(e); }
-  }
-  
-  // Sync cada 10 segundos si hay cambios
-  let lastClases = localStorage.getItem('ceut_clases');
-  let lastUsuarios = localStorage.getItem('ceut_usuarios');
-  
-  setInterval(()=>{
-    let currClases = localStorage.getItem('ceut_clases');
-    let currUsuarios = localStorage.getItem('ceut_usuarios');
-    if(currClases !== lastClases || currUsuarios !== lastUsuarios){
-      lastClases = currClases;
-      lastUsuarios = currUsuarios;
-      syncTodoANube();
-    }
-  }, 5000);
-  
-  window.syncTodoANube = syncTodoANube;
 })();
 </script>
 </head>
