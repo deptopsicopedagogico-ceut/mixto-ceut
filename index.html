@@ -2,6 +2,59 @@
 <html lang="en">
 <head>
 <style>
+/* Nube indicator que no estorba */
+#nube-container {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  left: auto;
+  z-index: 40;
+  pointer-events: none;
+}
+#nube-status {
+  pointer-events: auto;
+}
+#nube-status:hover {
+  opacity: 1 !important;
+  transform: scale(1.02) !important;
+}
+@media (max-width: 768px) {
+  #nube-status {
+    bottom: 16px !important;
+    right: 12px !important;
+    left: auto !important;
+    transform: none !important;
+    font-size: 9px !important;
+    padding: 5px 10px !important;
+    max-width: 85vw !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #nube-container {
+    right: 12px !important;
+    left: auto !important;
+    transform: none !important;
+    bottom: 16px !important;
+    align-items: flex-end !important;
+  }
+  #nube-dot {
+    right: 12px !important;
+    left: auto !important;
+    transform: none !important;
+    bottom: 16px !important;
+  }
+}
+@media (max-width: 480px) {
+  #nube-status {
+    bottom: 70px !important;
+    font-size: 8px !important;
+    padding: 4px 8px !important;
+  }
+}
+</style>
+
+<style>
 /* === RESPONSIVE PARA CUALQUIER DISPOSITIVO === */
 * { box-sizing: border-box; max-width: 100%; }
 html { overflow-x: hidden; }
@@ -110,12 +163,71 @@ function crearIndicador(texto, color){
   if(!ind){
     ind = document.createElement('div');
     ind.id = 'nube-status';
-    ind.style.cssText = 'position:fixed;top:10px;right:10px;background:'+color+';color:white;padding:10px 16px;border-radius:20px;font-weight:800;z-index:99999;font-family:system-ui;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
-    document.addEventListener('DOMContentLoaded', ()=>{ if(!document.getElementById('nube-status')) document.body.appendChild(ind); });
-    if(document.body) document.body.appendChild(ind);
+    // NUEVA POSICIÓN: abajo izquierda, pequeño, no estorba botones
+    ind.style.cssText = 'position:fixed;bottom:12px;right:12px;left:auto;background:'+color+';color:white;padding:6px 12px 6px 10px;border-radius:12px;font-weight:700;z-index:40;font-family:system-ui;font-size:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:flex;align-items:center;gap:8px;max-width:280px;backdrop-filter:blur(8px);opacity:0.92;transition:all 0.3s ease;pointer-events:auto;';
+    ind.innerHTML = '<span id="nube-text">'+texto+'</span><button id="nube-close" style="background:rgba(255,255,255,0.2);border:none;color:white;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:grid;place-items:center;flex-shrink:0;">×</button>';
+    
+    // Crear contenedor para no estorbar
+    let container = document.getElementById('nube-container');
+    if(!container){
+      container = document.createElement('div');
+      container.id = 'nube-container';
+      container.style.cssText = 'position:fixed;bottom:12px;right:12px;left:auto;z-index:40;pointer-events:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end;';
+      document.addEventListener('DOMContentLoaded', ()=>{
+        if(!document.getElementById('nube-container')) document.body.appendChild(container);
+        if(!document.getElementById('nube-status')) container.appendChild(ind);
+      });
+      if(document.body){
+        document.body.appendChild(container);
+        container.appendChild(ind);
+      }
+    } else {
+      if(!document.getElementById('nube-status')) container.appendChild(ind);
+    }
+    
+    // Botón cerrar
+    setTimeout(()=>{
+      let closeBtn = document.getElementById('nube-close');
+      if(closeBtn){
+        closeBtn.onclick = ()=>{
+          ind.style.transform = 'translateY(100px) scale(0.8)';
+          ind.style.opacity = '0';
+          setTimeout(()=>{ ind.style.display='none'; }, 300);
+          // Mostrar puntito pequeño para reabrir
+          let dot = document.getElementById('nube-dot');
+          if(!dot){
+            dot = document.createElement('div');
+            dot.id = 'nube-dot';
+            dot.style.cssText = 'position:fixed;bottom:12px;right:12px;left:auto;width:12px;height:12px;background:'+color+';border-radius:50%;z-index:40;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:2px solid white;pointer-events:auto;';
+            dot.title = texto;
+            dot.onclick = ()=>{
+              ind.style.display='flex';
+              setTimeout(()=>{ ind.style.transform='translateY(0) scale(1)'; ind.style.opacity='0.92'; }, 10);
+              dot.remove();
+            };
+            document.body.appendChild(dot);
+          }
+        };
+      }
+    }, 100);
+    
+    // Auto-minimizar después de 8 segundos en móvil para no estorbar
+    setTimeout(()=>{
+      if(window.innerWidth < 768 && ind && ind.style.display!=='none'){
+        ind.style.transform = 'translateY(0) scale(0.9)';
+        ind.style.opacity = '0.7';
+      }
+    }, 8000);
+    
+  } else {
+    let textSpan = document.getElementById('nube-text');
+    if(textSpan) textSpan.textContent = texto;
+    else ind.textContent = texto;
+    ind.style.background = color;
+    // Actualizar dot tooltip también
+    let dot = document.getElementById('nube-dot');
+    if(dot) dot.title = texto;
   }
-  ind.textContent = texto;
-  ind.style.background = color;
   return ind;
 }
 
