@@ -2,147 +2,23 @@
 <html lang="en">
 <head>
 <style>
-/* Nube indicator que no estorba */
-#nube-container {
-  position: fixed;
-  bottom: 12px;
-  right: 12px;
-  left: auto;
-  z-index: 40;
-  pointer-events: none;
-}
-#nube-status {
-  pointer-events: auto;
-}
-#nube-status:hover {
-  opacity: 1 !important;
-  transform: scale(1.02) !important;
-}
-@media (max-width: 768px) {
-  #nube-status {
-    bottom: 16px !important;
-    right: 12px !important;
-    left: auto !important;
-    transform: none !important;
-    font-size: 9px !important;
-    padding: 5px 10px !important;
-    max-width: 85vw !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  #nube-container {
-    right: 12px !important;
-    left: auto !important;
-    transform: none !important;
-    bottom: 16px !important;
-    align-items: flex-end !important;
-  }
-  #nube-dot {
-    right: 12px !important;
-    left: auto !important;
-    transform: none !important;
-    bottom: 16px !important;
-  }
-}
-@media (max-width: 480px) {
-  #nube-status {
-    bottom: 70px !important;
-    font-size: 8px !important;
-    padding: 4px 8px !important;
-  }
+#nube-container{position:fixed;bottom:12px;right:12px;left:auto;z-index:40;pointer-events:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+#nube-status{pointer-events:auto}
+@media (max-width:768px){
+  #nube-status{bottom:16px!important;right:12px!important;left:auto!important;max-width:85vw!important}
+  #nube-container{right:12px!important;left:auto!important;bottom:16px!important}
 }
 </style>
-
 <style>
-/* === RESPONSIVE PARA CUALQUIER DISPOSITIVO === */
-* { box-sizing: border-box; max-width: 100%; }
-html { overflow-x: hidden; }
-body { overflow-x: hidden; -webkit-text-size-adjust: 100%; }
-
-/* Auth page responsive */
-@media (max-width: 1024px) {
-  .lg\:w-\[52\%] { width: 100% !important; }
-  .lg\:flex-row { flex-direction: column !important; }
-  .lg\:min-h-screen { min-height: auto !important; }
-  .min-h-\[46vh\] { min-height: 60vh !important; }
-  .lg\:p-12 { padding: 1.5rem !important; }
-  .lg\:text-\[46px\] { font-size: 28px !important; }
-  .lg\:w-\[160px\] { width: 100px !important; height: 100px !important; }
-}
-
-/* Tablets */
-@media (max-width: 768px) {
-  .max-w-\[1440px\] { padding-left: 1rem !important; padding-right: 1rem !important; }
-  .h-\[68px\] { height: 56px !important; }
-  .text-\[28px\] { font-size: 22px !important; }
-  .grid-cols-2 { grid-template-columns: 1fr !important; }
-  .lg\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
-  .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
-  .xl\:grid-cols-3 { grid-template-columns: 1fr !important; }
-  .w-\[72px\] { width: 56px !important; height: 56px !important; }
-}
-
-/* Móviles pequeños */
-@media (max-width: 480px) {
-  .p-8 { padding: 1rem !important; }
-  .px-5 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
-  .text-\[34px\] { font-size: 24px !important; }
-  .text-\[15px\] { font-size: 13px !important; }
-  .rounded-\[24px\] { border-radius: 16px !important; }
-  .w-\[120px\] { width: 90px !important; height: 90px !important; }
-  .gap-6 { gap: 1rem !important; }
-  .grid-cols-3 { grid-template-columns: 1fr !important; }
-}
-
-/* Asegurar que imágenes grandes sean responsive */
-img.w-\[120px\], img.w-\[160px\], img.lg\:w-\[160px\] {
-  max-width: 40vw !important;
-  height: auto !important;
-  object-fit: contain;
-}
-
-/* Header responsive */
-header .flex.items-center.gap-4 img.w-\[72px\] {
-  width: 48px !important;
-  height: 48px !important;
-}
-
-/* Botones y formularios responsive */
-button, input, select, textarea {
-  max-width: 100%;
-  font-size: 16px; /* Evita zoom en iOS */
-}
-
-/* Tablas responsive */
-table { display: block; overflow-x: auto; white-space: nowrap; }
-@media (max-width: 768px) {
-  table { font-size: 11px !important; }
-}
-
-/* Modales responsive */
-.fixed.inset-0 { padding: 1rem; }
-.max-w-\[480px\], .max-w-\[520px\], .max-w-\[640px\] { 
-  max-width: 95vw !important; 
-  margin: 0 auto;
-}
-
-/* Solo logo grande en pagina principal - ocultar logo pequeño extra si queda */
-.auth-page .w-\[72px\].h-\[72px\]:first-of-type {
-  display: none !important;
-}
-
-/* Mejorar legibilidad en móviles */
-@media (max-width: 640px) {
-  .backdrop-blur-xl { backdrop-filter: none !important; background: rgba(255,255,255,0.98) !important; }
-  .shadow-\[0_20px_40px_-12px_rgba\(21\,13\,51\,0\.12\)\] { box-shadow: 0 4px 12px rgba(21,13,51,0.1) !important; }
-}
+@media (max-width:1024px){.lg\:w-\[52\%]{width:100%!important}.lg\:flex-row{flex-direction:column!important}.lg\:min-h-screen{min-height:auto!important}.min-h-\[46vh\]{min-height:60vh!important}.lg\:p-12{padding:1.5rem!important}.lg\:text-\[46px\]{font-size:28px!important}}
+@media (max-width:768px){.max-w-\[1440px\]{padding-left:1rem!important;padding-right:1rem!important}.h-\[68px\]{height:56px!important}.text-\[28px\]{font-size:22px!important}.grid-cols-2{grid-template-columns:1fr!important}.lg\:grid-cols-4{grid-template-columns:repeat(2,1fr)!important}.md\:grid-cols-2{grid-template-columns:1fr!important}.xl\:grid-cols-3{grid-template-columns:1fr!important}}
+@media (max-width:480px){.p-8{padding:1rem!important}.px-5{padding-left:0.75rem!important;padding-right:0.75rem!important}.text-\[34px\]{font-size:24px!important}.rounded-\[24px\]{border-radius:16px!important}.w-\[120px\]{width:90px!important;height:90px!important}.gap-6{gap:1rem!important}}
+img.w-\[120px\],img.w-\[160px\],img.lg\:w-\[160px\]{max-width:40vw!important;height:auto!important}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-// === MIXCEUT NUBE DEFINITIVA - MIGRA TUS CLASES EXISTENTES ===
 const firebaseConfig = {
   apiKey: "AIzaSyB9va23hvQOgu2RnaPysKic9uuFEAO675o",
   authDomain: "mixceut.firebaseapp.com",
@@ -163,11 +39,8 @@ function crearIndicador(texto, color){
   if(!ind){
     ind = document.createElement('div');
     ind.id = 'nube-status';
-    // NUEVA POSICIÓN: abajo izquierda, pequeño, no estorba botones
     ind.style.cssText = 'position:fixed;bottom:12px;right:12px;left:auto;background:'+color+';color:white;padding:6px 12px 6px 10px;border-radius:12px;font-weight:700;z-index:40;font-family:system-ui;font-size:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:flex;align-items:center;gap:8px;max-width:280px;backdrop-filter:blur(8px);opacity:0.92;transition:all 0.3s ease;pointer-events:auto;';
     ind.innerHTML = '<span id="nube-text">'+texto+'</span><button id="nube-close" style="background:rgba(255,255,255,0.2);border:none;color:white;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:grid;place-items:center;flex-shrink:0;">×</button>';
-    
-    // Crear contenedor para no estorbar
     let container = document.getElementById('nube-container');
     if(!container){
       container = document.createElement('div');
@@ -181,119 +54,66 @@ function crearIndicador(texto, color){
         document.body.appendChild(container);
         container.appendChild(ind);
       }
-    } else {
-      if(!document.getElementById('nube-status')) container.appendChild(ind);
     }
-    
-    // Botón cerrar
     setTimeout(()=>{
       let closeBtn = document.getElementById('nube-close');
       if(closeBtn){
         closeBtn.onclick = ()=>{
-          ind.style.transform = 'translateY(100px) scale(0.8)';
-          ind.style.opacity = '0';
-          setTimeout(()=>{ ind.style.display='none'; }, 300);
-          // Mostrar puntito pequeño para reabrir
-          let dot = document.getElementById('nube-dot');
-          if(!dot){
-            dot = document.createElement('div');
-            dot.id = 'nube-dot';
-            dot.style.cssText = 'position:fixed;bottom:12px;right:12px;left:auto;width:12px;height:12px;background:'+color+';border-radius:50%;z-index:40;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:2px solid white;pointer-events:auto;';
-            dot.title = texto;
-            dot.onclick = ()=>{
-              ind.style.display='flex';
-              setTimeout(()=>{ ind.style.transform='translateY(0) scale(1)'; ind.style.opacity='0.92'; }, 10);
-              dot.remove();
-            };
-            document.body.appendChild(dot);
-          }
+          ind.style.display='none';
+          let dot = document.createElement('div');
+          dot.id = 'nube-dot';
+          dot.style.cssText = 'position:fixed;bottom:12px;right:12px;width:12px;height:12px;background:'+color+';border-radius:50%;z-index:40;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:2px solid white;pointer-events:auto;';
+          dot.onclick = ()=>{ ind.style.display='flex'; dot.remove(); };
+          document.body.appendChild(dot);
         };
       }
     }, 100);
-    
-    // Auto-minimizar después de 8 segundos en móvil para no estorbar
-    setTimeout(()=>{
-      if(window.innerWidth < 768 && ind && ind.style.display!=='none'){
-        ind.style.transform = 'translateY(0) scale(0.9)';
-        ind.style.opacity = '0.7';
-      }
-    }, 8000);
-    
   } else {
     let textSpan = document.getElementById('nube-text');
     if(textSpan) textSpan.textContent = texto;
-    else ind.textContent = texto;
     ind.style.background = color;
-    // Actualizar dot tooltip también
-    let dot = document.getElementById('nube-dot');
-    if(dot) dot.title = texto;
   }
   return ind;
 }
-
 async function guardarEnNube(coleccion, id, datos){
   try{
     let clean = JSON.parse(JSON.stringify(datos));
     await db.collection(coleccion).doc(id).set(clean, {merge:true});
     console.log('☁️ Guardado nube: '+coleccion+'/'+id);
     return true;
-  }catch(e){ console.error('Error guardar nube', e); return false; }
+  }catch(e){ console.error(e); return false; }
 }
-
+async function eliminarDeNube(coleccion, id){
+  try{ await db.collection(coleccion).doc(id).delete(); console.log('🗑️ Eliminado nube:'+coleccion+'/'+id); return true; }catch(e){ return false; }
+}
 async function migrarLocalANube(){
   try{
     let clases1 = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
     let clases2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+    let todasClases = [...clases1, ...clases2];
+    let clasesUnicas = []; let ids = new Set();
+    todasClases.forEach(c=>{ if(c&&c.id&&!ids.has(c.id)){ ids.add(c.id); clasesUnicas.push(c); } });
     let usuarios1 = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
     let usuarios2 = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
-    
-    let todasClases = [...clases1, ...clases2];
-    let clasesUnicas = [];
-    let ids = new Set();
-    todasClases.forEach(c=>{ if(c&&c.id&&!ids.has(c.id)){ ids.add(c.id); clasesUnicas.push(c); } });
-    
     let todosUsuarios = [...usuarios1, ...usuarios2];
-    let usuariosUnicos = [];
-    let idsU = new Set();
+    let usuariosUnicos = []; let idsU = new Set();
     todosUsuarios.forEach(u=>{ if(u&&u.id&&!idsU.has(u.id)){ idsU.add(u.id); usuariosUnicos.push(u); } });
-    
-    console.log('📤 Migrando a nube MIXCEUT: '+clasesUnicas.length+' clases, '+usuariosUnicos.length+' usuarios');
-    
     if(clasesUnicas.length>0 || usuariosUnicos.length>0){
       crearIndicador('☁️ SUBIENDO '+clasesUnicas.length+' CURSOS A NUBE...', '#F59E0B');
       for(let c of clasesUnicas){ await guardarEnNube('clases', c.id, c); }
       for(let u of usuariosUnicos){ await guardarEnNube('usuarios', u.id, u); }
-      // Compatibilidad ceut_data
-      if(clasesUnicas.length>0){
-        await db.collection('ceut_data').doc('subjects').set({data: clasesUnicas, updatedAt: new Date().toISOString()}, {merge:true});
-      }
-      if(usuariosUnicos.length>0){
-        await db.collection('ceut_data').doc('users').set({data: usuariosUnicos, updatedAt: new Date().toISOString()}, {merge:true});
-      }
-      console.log('✅ Migración completa');
     }
     return {clases: clasesUnicas, usuarios: usuariosUnicos};
-  }catch(e){ console.error('Error migración', e); return {clases:[], usuarios:[]}; }
+  }catch(e){ return {clases:[], usuarios:[]}; }
 }
-
 async function cargarNube(){
   crearIndicador('☁️ CONECTANDO NUBE MIXCEUT...', '#F59E0B');
   try{
-    // Primero migrar lo local existente a nube para que aparezcan tus clases ya creadas
     await migrarLocalANube();
-    
-    // Luego cargar todo desde nube (incluye lo de otros dispositivos)
     let [cSnap, uSnap] = await Promise.all([db.collection('clases').get(), db.collection('usuarios').get()]);
     let clasesNube=[], usuariosNube=[];
     cSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; clasesNube.push(data); });
     uSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; usuariosNube.push(data); });
-    
-    console.log('🔥 NUBE MIXCEUT: '+clasesNube.length+' clases, '+usuariosNube.length+' usuarios');
-    
-    let clasesLocal = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
-    let usuariosLocal = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
-    
-    // Guardar en localStorage
     if(clasesNube.length>0){
       localStorage.setItem('ceut_clases', JSON.stringify(clasesNube));
       localStorage.setItem('ceut_subjects_v2', JSON.stringify(clasesNube));
@@ -304,36 +124,13 @@ async function cargarNube(){
       localStorage.setItem('ceut_users_v2', JSON.stringify(usuariosNube));
       window.__USUARIOS_NUBE__ = usuariosNube;
     }
-    
     crearIndicador('☁️ NUBE MIXCEUT ACTIVA • '+clasesNube.length+' cursos • '+usuariosNube.length+' usuarios', '#10B981');
-    
-    // Toast
-    setTimeout(()=>{
-      let toast=document.createElement('div');
-      toast.style.cssText='position:fixed;top:50px;right:10px;background:#150D33;color:#FFB800;padding:12px 18px;border-radius:12px;font-weight:800;z-index:99999;font-family:system-ui;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);border:2px solid #FFB800;';
-      toast.innerHTML='🔥 NUBE MIXCEUT CONECTADA<br><span style="color:white;font-size:11px;font-weight:600">'+clasesNube.length+' cursos • '+usuariosNube.length+' usuarios<br>Tus clases ya creadas están en la nube</span>';
-      document.body.appendChild(toast);
-      setTimeout(()=>toast.remove(), 6000);
-    }, 800);
-    
-    // Si había 0 local y ahora hay datos en nube, recargar para que React los lea
-    if((clasesLocal.length===0 && clasesNube.length>0) || (usuariosLocal.length===0 && usuariosNube.length>0)){
-      console.log('🔥 Primera carga, recargando para aplicar datos de nube...');
-      setTimeout(()=>{
-        if(confirm('🔥 NUBE MIXCEUT: Se cargaron '+clasesNube.length+' cursos y '+usuariosNube.length+' usuarios desde la nube (incluye tus clases ya creadas).\n\n¿Recargar para ver todos los datos?')){
-          location.reload();
-        }
-      }, 1500);
-    }
-    
-    // Tiempo real
     db.collection('clases').onSnapshot(snap=>{
       let clases=[]; snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; clases.push(data); });
       if(clases.length>0){
         localStorage.setItem('ceut_clases', JSON.stringify(clases));
         localStorage.setItem('ceut_subjects_v2', JSON.stringify(clases));
         window.__CLASES_NUBE__ = clases;
-        console.log('🔄 Clases tiempo real:', clases.length);
       }
     });
     db.collection('usuarios').onSnapshot(snap=>{
@@ -342,18 +139,14 @@ async function cargarNube(){
         localStorage.setItem('ceut_usuarios', JSON.stringify(usuarios));
         localStorage.setItem('ceut_users_v2', JSON.stringify(usuarios));
         window.__USUARIOS_NUBE__ = usuarios;
-        console.log('🔄 Usuarios tiempo real:', usuarios.length);
       }
     });
-    
     return {clases: clasesNube, usuarios: usuariosNube};
   }catch(e){
-    console.error('❌ Error nube:', e);
     crearIndicador('❌ ERROR NUBE: '+e.message.substring(0,30), '#EF4444');
     return {clases:[], usuarios:[]};
   }
 }
-
 window.validarClaveNube = async function(claveRaw){
   let clave = claveRaw.trim().toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9-]/g,'');
   if(!clave) return null;
@@ -363,43 +156,40 @@ window.validarClaveNube = async function(claveRaw){
     let todas = [...clasesLocal, ...clasesV2, ...(window.__CLASES_NUBE__||[])];
     let found = todas.find(c=>c.clave===clave || c.clave.replace(/-/g,'')===clave.replace(/-/g,''));
     if(found) return found;
-    console.log('🔍 Buscando clave en nube:', clave);
     let snap = await db.collection('clases').where('clave','==',clave).get();
-    if(!snap.empty){ let data=snap.docs[0].data(); console.log('✅ Clave encontrada en nube:', data.nombre); return data; }
+    if(!snap.empty) return snap.docs[0].data();
     let all = await db.collection('clases').get();
     let f=null; all.forEach(d=>{ let data=d.data(); if(data.clave && data.clave.replace(/-/g,'')===clave.replace(/-/g,'')) f=data; });
     return f;
   }catch(e){ return null; }
 };
-
 window.guardarEnNube = guardarEnNube;
+window.eliminarDeNube = eliminarDeNube;
 window.cargarNube = cargarNube;
-
 (function(){
   const orig=localStorage.setItem.bind(localStorage);
   localStorage.setItem=function(k,v){
-    orig(k,v);
-    if(k==='ceut_clases'||k==='ceut_subjects_v2'||k==='ceut_usuarios'||k==='ceut_users_v2'){
-      try{
-        let arr=JSON.parse(v);
+    try{
+      if((k==='ceut_clases' || k==='ceut_subjects_v2') && v){
+        let arr = JSON.parse(v);
         if(Array.isArray(arr)){
-          arr.forEach(item=>{
-            if(item&&item.id){
-              let col=(item.correo!==undefined||item.clases!==undefined||item.role)?'usuarios':'clases';
-              guardarEnNube(col, item.id, item);
-              if(col==='clases'){
-                db.collection('ceut_data').doc('subjects').set({data: arr, updatedAt: new Date().toISOString()}, {merge:true});
-              }else{
-                db.collection('ceut_data').doc('users').set({data: arr, updatedAt: new Date().toISOString()}, {merge:true});
-              }
+          arr.forEach(clase=>{
+            if(clase && clase.id && clase.clave){
+              guardarEnNube('clases', clase.id, clase);
             }
           });
         }
-      }catch(e){}
-    }
+      }
+      if((k==='ceut_usuarios' || k==='ceut_users_v2') && v){
+        let arr = JSON.parse(v);
+        if(Array.isArray(arr)){
+          arr.forEach(u=>{ if(u && u.id) guardarEnNube('usuarios', u.id, u); });
+        }
+      }
+    }catch(e){}
+    return orig(k,v);
   };
 })();
-
 cargarNube();
 </script>
 
@@ -611,7 +401,7 @@ Error generating stack: `+u.message+`
         ::-webkit-scrollbar-thumb{background:#150D33;border-radius:10px}
         @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
         @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
-      `}),a&&A("div",{className:"fixed top-5 right-5 z-[9999] animate-[slideIn_0.4s_ease] max-w-[90vw]",children:c("div",{className:"bg-[#150D33] text-white px-5 py-3 rounded-[14px] shadow-[0_20px_40px_-12px_rgba(21,13,51,0.4)] border border-[#FFB800]/30 flex items-center gap-3",children:[A("div",{className:"w-8 h-8 rounded-full bg-[#FFB800] flex items-center justify-center text-[#150D33] font-bold",children:"✓"}),A("span",{className:"text-[12px] font-bold tracking-wide",children:a})]})}),s8&&A("div",{className:"fixed inset-0 pointer-events-none z-[9998] flex items-center justify-center",children:A("div",{className:"text-[80px] animate-bounce",children:"\uD83C\uDF89"})}),l==="auth"&&c("div",{className:"min-h-screen w-full max-w-[100vw] overflow-hidden flex flex-col lg:flex-row",children:[c("div",{className:"lg:w-[52%] w-full max-w-[100vw] bg-[#150D33] relative overflow-hidden flex flex-col justify-between p-8 lg:p-12 min-h-[46vh] lg:min-h-screen",children:[A("div",{className:"absolute inset-0 opacity-[0.07] overflow-hidden",style:{backgroundImage:"repeating-linear-gradient(-45deg,#FFB800 0 1px,transparent 1px 14px)"}}),A("div",{className:"absolute -top-32 -left-32 w-[400px] h-[400px] max-w-[80vw] bg-[#FFB800]/20 rounded-full blur-[80px] pointer-events-none"}),A("div",{className:"absolute -bottom-32 -right-32 w-[400px] h-[400px] max-w-[80vw] bg-[#4C3A9C]/30 rounded-full blur-[80px] pointer-events-none"}),c("div",{className:"relative z-10 h-4"}),c("div",{className:"relative z-10 flex-1 flex flex-col items-center justify-center py-8",children:[c("div",{className:"relative",children:[A("div",{className:"absolute inset-0 bg-[#FFB800] blur-[60px] opacity-25 rounded-full scale-[1.4]"}),A("img",{src:xe,alt:"CEUT Escudo Grande - Logo Principal",className:"relative w-[120px] h-[120px] md:w-[140px] md:h-[140px] lg:w-[180px] lg:h-[180px] object-contain drop-shadow-[0_0_40px_rgba(255,184,0,0.7)] mx-auto",style:{filter:"drop-shadow(0 0 36px rgba(255,184,0,0.7))",maxWidth:"45vw",height:"auto"}})]}),c("h1",{className:"mt-8 text-white text-center font-extrabold leading-[0.9] tracking-tight text-[34px] lg:text-[46px] max-w-[520px]",children:["CENTRO DE ESTUDIOS",A("br",{}),A("span",{className:"text-[#FFB800]",children:"UNIVERSITARIOS"}),A("br",{}),"TEHUACÁN"]}),c("div",{className:"mt-6 inline-flex items-center gap-2 rounded-full border border-[#FFB800]/30 bg-[#FFB800]/10 px-4 py-2",children:[A("span",{className:"w-2 h-2 bg-[#FFB800] rounded-full animate-pulse"}),A("span",{className:"text-[#FFB800] font-extrabold tracking-[0.18em] text-[10px]",children:"MODALIDAD MIXTA SABATINA • PORTAL 24/7"})]}),A("p",{className:"mt-4 text-white text-center max-w-[420px] text-[15px] lg:text-[16px] leading-relaxed font-extrabold tracking-wide",children:"EL TIGRE NO SE RINDE, APRENDE MÁS ALLÁ DEL AULA"}),A("p",{className:"mt-2 text-white/50 text-center max-w-[380px] text-[11px] leading-relaxed font-bold tracking-widest uppercase",children:"Orgullo CEUT • Fuerza • Disciplina • Conocimiento"}),A("div",{className:"mt-8 grid grid-cols-3 gap-3 w-full max-w-[440px]",children:(function(){
+      `}),a&&A("div",{className:"fixed top-5 right-5 z-[9999] animate-[slideIn_0.4s_ease] max-w-[90vw]",children:c("div",{className:"bg-[#150D33] text-white px-5 py-3 rounded-[14px] shadow-[0_20px_40px_-12px_rgba(21,13,51,0.4)] border border-[#FFB800]/30 flex items-center gap-3",children:[A("div",{className:"w-8 h-8 rounded-full bg-[#FFB800] flex items-center justify-center text-[#150D33] font-bold",children:"✓"}),A("span",{className:"text-[12px] font-bold tracking-wide",children:a})]})}),s8&&A("div",{className:"fixed inset-0 pointer-events-none z-[9998] flex items-center justify-center",children:A("div",{className:"text-[80px] animate-bounce",children:"\uD83C\uDF89"})}),l==="auth"&&c("div",{className:"min-h-screen w-full max-w-[100vw] overflow-hidden flex flex-col lg:flex-row",children:[c("div",{className:"lg:w-[52%] w-full max-w-[100vw] bg-[#150D33] relative overflow-hidden flex flex-col justify-between p-8 lg:p-12 min-h-[46vh] lg:min-h-screen",children:[A("div",{className:"absolute inset-0 opacity-[0.07] overflow-hidden",style:{backgroundImage:"repeating-linear-gradient(-45deg,#FFB800 0 1px,transparent 1px 14px)"}}),A("div",{className:"absolute -top-32 -left-32 w-[400px] h-[400px] max-w-[80vw] bg-[#FFB800]/20 rounded-full blur-[80px] pointer-events-none"}),A("div",{className:"absolute -bottom-32 -right-32 w-[400px] h-[400px] max-w-[80vw] bg-[#4C3A9C]/30 rounded-full blur-[80px] pointer-events-none"}),c("div",{className:"relative z-10 h-2"}),c("div",{className:"relative z-10 flex-1 flex flex-col items-center justify-center py-8",children:[c("div",{className:"relative",children:[A("div",{className:"absolute inset-0 bg-[#FFB800] blur-[60px] opacity-25 rounded-full scale-[1.4]"}),A("img",{src:xe,alt:"CEUT Escudo Grande",className:"relative w-[120px] h-[120px] lg:w-[160px] lg:h-[160px] object-contain drop-shadow-[0_0_40px_rgba(255,184,0,0.7)]",style:{filter:"drop-shadow(0 0 36px rgba(255,184,0,0.7))"}})]}),c("h1",{className:"mt-8 text-white text-center font-extrabold leading-[0.9] tracking-tight text-[34px] lg:text-[46px] max-w-[520px]",children:["CENTRO DE ESTUDIOS",A("br",{}),A("span",{className:"text-[#FFB800]",children:"UNIVERSITARIOS"}),A("br",{}),"TEHUACÁN"]}),c("div",{className:"mt-6 inline-flex items-center gap-2 rounded-full border border-[#FFB800]/30 bg-[#FFB800]/10 px-4 py-2",children:[A("span",{className:"w-2 h-2 bg-[#FFB800] rounded-full animate-pulse"}),A("span",{className:"text-[#FFB800] font-extrabold tracking-[0.18em] text-[10px]",children:"MODALIDAD MIXTA SABATINA • PORTAL 24/7"})]}),A("p",{className:"mt-4 text-white text-center max-w-[420px] text-[15px] lg:text-[16px] leading-relaxed font-extrabold tracking-wide",children:"EL TIGRE NO SE RINDE, APRENDE MÁS ALLÁ DEL AULA"}),A("p",{className:"mt-2 text-white/50 text-center max-w-[380px] text-[11px] leading-relaxed font-bold tracking-widest uppercase",children:"Orgullo CEUT • Fuerza • Disciplina • Conocimiento"}),A("div",{className:"mt-8 grid grid-cols-3 gap-3 w-full max-w-[440px]",children:(function(){
   try{
     const _users = n || [];
     const _subjects = t || [];
