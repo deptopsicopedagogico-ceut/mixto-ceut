@@ -258,6 +258,197 @@ window.cargarNube = cargarNube;
   };
 })();
 cargarNube();
+
+<script>
+// === SISTEMA DEFINITIVO DE BORRADO CON LISTA NEGRA ===
+(function(){
+  // Lista negra de IDs eliminados que nunca deben volver
+  function getBlacklist(){
+    try{
+      return JSON.parse(localStorage.getItem('ceut_borrados')||'{"usuarios":[],"clases":[]}');
+    }catch(e){
+      return {usuarios:[], clases:[]};
+    }
+  }
+  function addToBlacklist(tipo, id){
+    let bl = getBlacklist();
+    if(tipo==='usuario' || tipo==='usuarios'){
+      if(!bl.usuarios.includes(id)) bl.usuarios.push(id);
+    }
+    if(tipo==='clase' || tipo==='clases'){
+      if(!bl.clases.includes(id)) bl.clases.push(id);
+    }
+    localStorage.setItem('ceut_borrados', JSON.stringify(bl));
+    console.log('⛔ Agregado a lista negra:', tipo, id);
+  }
+  function isBlacklisted(tipo, id){
+    let bl = getBlacklist();
+    if(tipo==='usuario' || tipo==='usuarios') return bl.usuarios.includes(id);
+    if(tipo==='clase' || tipo==='clases') return bl.clases.includes(id);
+    return false;
+  }
+  window.getBlacklist = getBlacklist;
+  window.addToBlacklist = addToBlacklist;
+  window.isBlacklisted = isBlacklisted;
+
+  // Función para limpiar todos los fantasmas de la nube
+  window.limpiarFantasmasNube = async function(){
+    let bl = getBlacklist();
+    if(bl.usuarios.length===0 && bl.clases.length===0){
+      alert('No hay elementos en lista negra. Los alumnos que borres se agregarán automáticamente.');
+      return;
+    }
+    if(!confirm(`¿ELIMINAR DEFINITIVAMENTE ${bl.usuarios.length} usuarios y ${bl.clases.length} clases de la NUBE?\n\nNo volverán a aparecer en ningún dispositivo.`)) return;
+    
+    crearIndicador('🗑️ LIMPIANDO FANTASMAS DE NUBE...', '#EF4444');
+    
+    // Borrar usuarios de todas las colecciones
+    for(let id of bl.usuarios){
+      try{ await db.collection('usuarios').doc(id).delete(); console.log('Borrado usuario:', id); }catch(e){}
+      // También borrar de clases donde esté inscrito
+      try{
+        let clasesSnap = await db.collection('clases').get();
+        for(let doc of clasesSnap.docs){
+          let data = doc.data();
+          if(data.inscritos && data.inscritos.includes(id)){
+            let nuevos = data.inscritos.filter(x=>x!==id);
+            await db.collection('clases').doc(doc.id).update({inscritos: nuevos, alumnos: Math.max(0, (data.alumnos||1)-1)});
+          }
+        }
+      }catch(e){}
+    }
+    
+    // Borrar clases
+    for(let id of bl.clases){
+      try{ await db.collection('clases').doc(id).delete(); console.log('Borrada clase:', id); }catch(e){}
+    }
+    
+    // Limpiar ceut_data
+    try{
+      let subjects = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]').filter(c=>!bl.clases.includes(c.id));
+      let users = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]').filter(u=>!bl.usuarios.includes(u.id));
+      await db.collection('ceut_data').doc('subjects').set({data: subjects, updatedAt: new Date().toISOString()}, {merge:false});
+      await db.collection('ceut_data').doc('users').set({data: users, updatedAt: new Date().toISOString()}, {merge:false});
+      await db.collection('ceut_data').doc('clases').set({data: subjects, updatedAt: new Date().toISOString()}, {merge:false});
+      await db.collection('ceut_data').doc('usuarios').set({data: users, updatedAt: new Date().toISOString()}, {merge:false});
+    }catch(e){}
+    
+    crearIndicador('✅ FANTASMAS ELIMINADOS DE NUBE', '#10B981');
+    alert(`✅ Eliminados definitivamente ${bl.usuarios.length} usuarios y ${bl.clases.length} clases de la nube. Recargando...`);
+    setTimeout(()=>location.reload(), 1000);
+  };
+
+  // Parchear guardarEnNube para que respete lista negra
+  const originalGuardar = window.guardarEnNube;
+  window.guardarEnNube = async function(coleccion, id, datos){
+    if(isBlacklisted(coleccion, id)){
+      console.log('⛔ Bloqueado por lista negra, no se guarda en nube:', coleccion, id);
+      // En lugar de guardar, borrar si existe
+      try{ await db.collection(coleccion).doc(id).delete(); }catch(e){}
+      return false;
+    }
+    return originalGuardar(coleccion, id, datos);
+  };
+
+  // Parchear migrarLocalANube para que filtre lista negra
+  const originalMigrar = window.migrarLocalANube;
+  window.migrarLocalANube = async function(){
+    try{
+      let bl = getBlacklist();
+      let clases1 = JSON.parse(localStorage.getItem('ceut_clases')||'[]').filter(c=>!bl.clases.includes(c.id));
+      let clases2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]').filter(c=>!bl.clases.includes(c.id));
+      let todasClases = [...clases1, ...clases2];
+      let clasesUnicas = []; let ids = new Set();
+      todasClases.forEach(c=>{ if(c&&c.id&&!ids.has(c.id)&&!bl.clases.includes(c.id)){ ids.add(c.id); clasesUnicas.push(c); } });
+      let usuarios1 = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]').filter(u=>!bl.usuarios.includes(u.id));
+      let usuarios2 = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]').filter(u=>!bl.usuarios.includes(u.id));
+      let todosUsuarios = [...usuarios1, ...usuarios2];
+      let usuariosUnicos = []; let idsU = new Set();
+      todosUsuarios.forEach(u=>{ if(u&&u.id&&!idsU.has(u.id)&&!bl.usuarios.includes(u.id)){ idsU.add(u.id); usuariosUnicos.push(u); } });
+      if(clasesUnicas.length>0 || usuariosUnicos.length>0){
+        crearIndicador('☁️ SUBIENDO '+clasesUnicas.length+' CURSOS A NUBE...', '#F59E0B');
+        for(let c of clasesUnicas){ 
+          if(!isBlacklisted('clases', c.id)) await originalGuardar('clases', c.id, c); 
+        }
+        for(let u of usuariosUnicos){ 
+          if(!isBlacklisted('usuarios', u.id)) await originalGuardar('usuarios', u.id, u); 
+        }
+      }
+      return {clases: clasesUnicas, usuarios: usuariosUnicos};
+    }catch(e){ return {clases:[], usuarios:[]}; }
+  };
+
+  // Parchear cargarNube para que filtre lista negra
+  const originalCargar = window.cargarNube;
+  window.cargarNube = async function(){
+    crearIndicador('☁️ CONECTANDO NUBE MIXCEUT...', '#F59E0B');
+    try{
+      await window.migrarLocalANube();
+      let [cSnap, uSnap] = await Promise.all([db.collection('clases').get(), db.collection('usuarios').get()]);
+      let bl = getBlacklist();
+      let clasesNube=[], usuariosNube=[];
+      cSnap.forEach(d=>{ 
+        let data=d.data(); if(!data.id) data.id=d.id; 
+        if(!bl.clases.includes(data.id)) clasesNube.push(data);
+        else { console.log('⛔ Clase en lista negra filtrada:', data.id); db.collection('clases').doc(data.id).delete().catch(()=>{}); }
+      });
+      uSnap.forEach(d=>{ 
+        let data=d.data(); if(!data.id) data.id=d.id; 
+        if(!bl.usuarios.includes(data.id)) usuariosNube.push(data);
+        else { console.log('⛔ Usuario en lista negra filtrado:', data.id); db.collection('usuarios').doc(data.id).delete().catch(()=>{}); }
+      });
+      console.log('🔥 NUBE FILTRADA: '+clasesNube.length+' clases, '+usuariosNube.length+' usuarios (filtrados '+(cSnap.size-clasesNube.length+uSnap.size-usuariosNube.length)+' fantasmas)');
+      if(clasesNube.length>0){
+        localStorage.setItem('ceut_clases', JSON.stringify(clasesNube));
+        localStorage.setItem('ceut_subjects_v2', JSON.stringify(clasesNube));
+        window.__CLASES_NUBE__ = clasesNube;
+      } else {
+        // Si no hay clases en nube filtradas, limpiar local también
+        localStorage.setItem('ceut_clases', JSON.stringify([]));
+        localStorage.setItem('ceut_subjects_v2', JSON.stringify([]));
+        window.__CLASES_NUBE__ = [];
+      }
+      if(usuariosNube.length>0){
+        localStorage.setItem('ceut_usuarios', JSON.stringify(usuariosNube));
+        localStorage.setItem('ceut_users_v2', JSON.stringify(usuariosNube));
+        window.__USUARIOS_NUBE__ = usuariosNube;
+      } else {
+        // Limpiar si no hay usuarios
+        let currentUsers = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+        let filtered = currentUsers.filter(u=>!bl.usuarios.includes(u.id));
+        localStorage.setItem('ceut_usuarios', JSON.stringify(filtered));
+        localStorage.setItem('ceut_users_v2', JSON.stringify(filtered));
+        window.__USUARIOS_NUBE__ = filtered;
+      }
+      crearIndicador('☁️ NUBE MIXCEUT ACTIVA • '+clasesNube.length+' cursos • '+usuariosNube.length+' usuarios', '#10B981');
+      // Tiempo real con filtro
+      db.collection('clases').onSnapshot(snap=>{
+        let bl = getBlacklist();
+        let clases=[]; 
+        snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; if(!bl.clases.includes(data.id)) clases.push(data); });
+        localStorage.setItem('ceut_clases', JSON.stringify(clases));
+        localStorage.setItem('ceut_subjects_v2', JSON.stringify(clases));
+        window.__CLASES_NUBE__ = clases;
+      });
+      db.collection('usuarios').onSnapshot(snap=>{
+        let bl = getBlacklist();
+        let usuarios=[]; 
+        snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; if(!bl.usuarios.includes(data.id)) usuarios.push(data); });
+        localStorage.setItem('ceut_usuarios', JSON.stringify(usuarios));
+        localStorage.setItem('ceut_users_v2', JSON.stringify(usuarios));
+        window.__USUARIOS_NUBE__ = usuarios;
+      });
+      return {clases: clasesNube, usuarios: usuariosNube};
+    }catch(e){
+      crearIndicador('❌ ERROR NUBE: '+e.message.substring(0,30), '#EF4444');
+      return {clases:[], usuarios:[]};
+    }
+  };
+
+  console.log('🛡️ Sistema de lista negra activado - alumnos borrados no volverán');
+})();
+</script>
+
 </script>
 
 
@@ -767,10 +958,33 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
     });
     document.getElementById('psico-recursos-table').innerHTML = recursosHTML;
 
+    
+    // Botón para limpiar fantasmas
+    let limpiarBtn = document.getElementById('btn-limpiar-fantasmas');
+    if(!limpiarBtn){
+      let statsDiv = document.querySelector('#psico-admin-overlay .psico-stats');
+      if(statsDiv){
+        let btn = document.createElement('button');
+        btn.id = 'btn-limpiar-fantasmas';
+        btn.className = 'psico-btn psico-btn-danger';
+        btn.style.cssText = 'background:#DC2626;color:white;padding:12px 20px;border-radius:8px;font-weight:800;margin:10px;cursor:pointer;';
+        btn.textContent = '🗑️ LIMPIAR ALUMNOS FANTASMA DE NUBE (LISTA NEGRA)';
+        btn.onclick = window.limpiarFantasmasNube;
+        statsDiv.parentNode.insertBefore(btn, statsDiv.nextSibling);
+        
+        // Mostrar lista negra actual
+        let bl = getBlacklist();
+        let blInfo = document.createElement('div');
+        blInfo.style.cssText = 'background:#1F2937;color:#10B981;padding:10px;border-radius:8px;margin:10px;font-family:monospace;font-size:11px;';
+        blInfo.innerHTML = `⛔ Lista negra: ${bl.usuarios.length} usuarios, ${bl.clases.length} clases bloqueados<br><small>IDs: ${bl.usuarios.slice(0,3).join(', ')}${bl.usuarios.length>3?'...':''}</small><br><button onclick="localStorage.removeItem('ceut_borrados'); alert('Lista negra limpiada'); location.reload();" style="background:#374151;color:white;padding:4px 8px;border-radius:4px;margin-top:5px;cursor:pointer;">Limpiar lista negra</button>`;
+        btn.parentNode.insertBefore(blInfo, btn.nextSibling);
+      }
+    }
+
     addLog(`Datos cargados: ${subjects.length} clases, ${alumnos.length} alumnos, ${docentes.length} docentes, ${totalRecursos} recursos`);
   }
 
-  window.psicoDeleteClase = async function(claseId){
+  window.psicoDeleteClase = async function(claseId){ addToBlacklist('clases', claseId);
     if(!confirm('¿ELIMINAR ESTA CLASE COMPLETA DEFINITIVAMENTE?\n\nSe borrará de la NUBE y de todos los dispositivos. No volverá a aparecer.\n¿Continuar?')) return;
     let {users, subjects} = getData();
     // PRIMERO BORRAR DE NUBE
@@ -799,13 +1013,30 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
   };
 
   window.psicoDeleteAlumno = async function(alumnoId){
-    if(!confirm('¿ELIMINAR ESTE ALUMNO DEFINITIVAMENTE?\n\nSe borrará de la NUBE y de todas las clases. No volverá a aparecer en ningún dispositivo.')) return;
+    let alumno = (getData().users||[]).find(u=>u.id===alumnoId);
+    let nombre = alumno ? alumno.nombre : alumnoId;
+    if(!confirm(`¿ELIMINAR DEFINITIVAMENTE A "${nombre}"?\n\nSe borrará de:\n- Nube MIXCEUT\n- Todas las clases\n- Todos los dispositivos\n- Lista negra (no volverá)\n\n¿Continuar?`)) return;
     
-    // PRIMERO BORRAR DE NUBE
+    // AGREGAR A LISTA NEGRA PRIMERO
+    addToBlacklist('usuarios', alumnoId);
+    
+    // BORRAR DE NUBE - TODAS LAS COLECCIONES
     try{
       await db.collection('usuarios').doc(alumnoId).delete();
       console.log('🗑️ Alumno eliminado de nube usuarios:', alumnoId);
-    }catch(e){ console.error('Error borrando alumno de nube', e); }
+    }catch(e){}
+    try{
+      // Borrar de todas las clases donde esté inscrito
+      let clasesSnap = await db.collection('clases').get();
+      for(let doc of clasesSnap.docs){
+        let data = doc.data();
+        if(data.inscritos && data.inscritos.includes(alumnoId)){
+          let nuevosInscritos = data.inscritos.filter(id=>id!==alumnoId);
+          await db.collection('clases').doc(doc.id).update({inscritos: nuevosInscritos, alumnos: Math.max(0, (data.alumnos||1)-1)});
+          console.log('🗑️ Alumno sacado de clase:', doc.id);
+        }
+      }
+    }catch(e){ console.error(e); }
     
     let {users, subjects} = getData();
     subjects = subjects.map(clase=> ({
@@ -815,26 +1046,29 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
     }));
     users = users.filter(u=>u.id!==alumnoId);
     
-    // LOCAL - TODAS las keys
+    // LOCAL - TODAS las keys + filtrar lista negra
     localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
     localStorage.setItem('ceut_users_v2', JSON.stringify(users));
     localStorage.setItem('ceut_clases', JSON.stringify(subjects));
     localStorage.setItem('ceut_usuarios', JSON.stringify(users));
     
-    // NUBE - Actualizar clases sin este alumno y usuarios
+    // NUBE - Actualizar
     try{
       for(let clase of subjects){
         await db.collection('clases').doc(clase.id).set(clase, {merge:true});
       }
       await db.collection('ceut_data').doc('subjects').set({data: subjects, updatedAt: new Date().toISOString()}, {merge:false});
       await db.collection('ceut_data').doc('users').set({data: users, updatedAt: new Date().toISOString()}, {merge:false});
+      await db.collection('ceut_data').doc('clases').set({data: subjects, updatedAt: new Date().toISOString()}, {merge:false});
+      await db.collection('ceut_data').doc('usuarios').set({data: users, updatedAt: new Date().toISOString()}, {merge:false});
     }catch(e){}
     
-    addLog(`🗑️ Alumno eliminado DEFINITIVAMENTE de nube y local: ${alumnoId}`);
+    addLog(`🗑️ Alumno ${nombre} eliminado DEFINITIVAMENTE y agregado a lista negra: ${alumnoId}`);
     loadAllData();
+    setTimeout(()=>{ alert(`✅ ${nombre} eliminado definitivamente. No volverá a aparecer en ningún dispositivo.`); }, 500);
   };
 
-  window.psicoDeleteDocente = async function(docenteId){
+  window.psicoDeleteDocente = async function(docenteId){ addToBlacklist('usuarios', docenteId);
     if(!confirm('¿ELIMINAR ESTE DOCENTE DEFINITIVAMENTE?\n\nSe borrará de la NUBE y no volverá a aparecer.')) return;
     
     try{
