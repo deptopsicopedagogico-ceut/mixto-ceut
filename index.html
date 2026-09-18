@@ -164,6 +164,73 @@ window.validarClaveNube = async function(claveRaw){
   }catch(e){ return null; }
 };
 window.guardarEnNube = guardarEnNube;
+
+// === PARCHE PARA QUE ALUMNOS NO VUELVAN A APARECER EN PORTAL PRINCIPAL ===
+window.eliminarAlumnoDefinitivo = async function(alumnoId){
+  try{
+    await db.collection('usuarios').doc(alumnoId).delete();
+    // Sacar de todas las clases en nube
+    let clasesSnap = await db.collection('clases').get();
+    for(let doc of clasesSnap.docs){
+      let data = doc.data();
+      if(data.inscritos && data.inscritos.includes(alumnoId)){
+        let nuevosInscritos = data.inscritos.filter(id=>id!==alumnoId);
+        await db.collection('clases').doc(doc.id).update({inscritos: nuevosInscritos, alumnos: Math.max(0, (data.alumnos||1)-1)});
+      }
+    }
+    console.log('🗑️ Alumno eliminado definitivo de toda la nube:', alumnoId);
+  }catch(e){ console.error(e); }
+};
+
+// Interceptar localStorage para detectar cuando se elimina un alumno en el portal principal
+(function(){
+  const origSetItem = localStorage.setItem.bind(localStorage);
+  let deletedUsers = new Set();
+  
+  localStorage.setItem = function(k,v){
+    try{
+      if(k==='ceut_users_v2' || k==='ceut_usuarios'){
+        let oldUsers = [];
+        try{ oldUsers = JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){}
+        let newUsers = [];
+        try{ newUsers = JSON.parse(v); }catch(e){}
+        let oldIds = new Set(oldUsers.map(u=>u.id));
+        let newIds = new Set(newUsers.map(u=>u.id));
+        oldIds.forEach(id=>{
+          if(!newIds.has(id) && !deletedUsers.has(id)){
+            deletedUsers.add(id);
+            console.log('🗑️ Detectado alumno eliminado en portal principal, borrando de nube:', id);
+            window.eliminarAlumnoDefinitivo(id);
+            setTimeout(()=>deletedUsers.delete(id), 5000);
+          }
+        });
+      }
+      if(k==='ceut_subjects_v2' || k==='ceut_clases'){
+        let oldClases = [];
+        try{ oldClases = JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){}
+        let newClases = [];
+        try{ newClases = JSON.parse(v); }catch(e){}
+        // Detectar alumnos eliminados de inscritos
+        oldClases.forEach(oldClase=>{
+          let newClase = newClases.find(c=>c.id===oldClase.id);
+          if(newClase && oldClase.inscritos){
+            let oldInscritos = new Set(oldClase.inscritos||[]);
+            let newInscritos = new Set(newClase.inscritos||[]);
+            oldInscritos.forEach(alumnoId=>{
+              if(!newInscritos.has(alumnoId)){
+                console.log('🗑️ Alumno sacado de clase', oldClase.id, ':', alumnoId);
+                // Actualizar en nube
+                db.collection('clases').doc(oldClase.id).set(newClase, {merge:true});
+              }
+            });
+          }
+        });
+      }
+    }catch(e){}
+    return origSetItem(k,v);
+  };
+})();
+
 window.eliminarDeNube = eliminarDeNube;
 window.cargarNube = cargarNube;
 (function(){
@@ -703,46 +770,93 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
     addLog(`Datos cargados: ${subjects.length} clases, ${alumnos.length} alumnos, ${docentes.length} docentes, ${totalRecursos} recursos`);
   }
 
-  window.psicoDeleteClase = function(claseId){
-    if(!confirm('¿ELIMINAR ESTA CLASE COMPLETA?\n\nSe borrará para todos los alumnos y docentes.\n¿Continuar?')) return;
+  window.psicoDeleteClase = async function(claseId){
+    if(!confirm('¿ELIMINAR ESTA CLASE COMPLETA DEFINITIVAMENTE?\n\nSe borrará de la NUBE y de todos los dispositivos. No volverá a aparecer.\n¿Continuar?')) return;
     let {users, subjects} = getData();
+    // PRIMERO BORRAR DE NUBE
+    try{
+      await db.collection('clases').doc(claseId).delete();
+      console.log('🗑️ Clase eliminada de nube:', claseId);
+    }catch(e){ console.error('Error borrando clase de nube', e); }
+    
     subjects = subjects.filter(c=>c.id!==claseId);
-    // Sacar clase de todos los usuarios
     users = users.map(u=> ({...u, clases: (u.clases||[]).filter(cid=>cid!==claseId)}));
+    
+    // LOCAL - Borrar de TODAS las keys
     localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
     localStorage.setItem('ceut_users_v2', JSON.stringify(users));
-    addLog(`🗑️ Clase eliminada: ${claseId}`);
+    localStorage.setItem('ceut_clases', JSON.stringify(subjects));
+    localStorage.setItem('ceut_usuarios', JSON.stringify(users));
+    
+    // Actualizar ceut_data en nube sin la clase
+    try{
+      await db.collection('ceut_data').doc('subjects').set({data: subjects, updatedAt: new Date().toISOString()}, {merge:false});
+    }catch(e){}
+    
+    addLog(`🗑️ Clase eliminada DEFINITIVAMENTE de nube y local: ${claseId}`);
     loadAllData();
     setTimeout(()=>location.reload(), 600);
   };
 
-  window.psicoDeleteAlumno = function(alumnoId){
-    if(!confirm('¿ELIMINAR ESTE ALUMNO DEL SISTEMA?\n\nSe borrará de todas las clases.')) return;
+  window.psicoDeleteAlumno = async function(alumnoId){
+    if(!confirm('¿ELIMINAR ESTE ALUMNO DEFINITIVAMENTE?\n\nSe borrará de la NUBE y de todas las clases. No volverá a aparecer en ningún dispositivo.')) return;
+    
+    // PRIMERO BORRAR DE NUBE
+    try{
+      await db.collection('usuarios').doc(alumnoId).delete();
+      console.log('🗑️ Alumno eliminado de nube usuarios:', alumnoId);
+    }catch(e){ console.error('Error borrando alumno de nube', e); }
+    
     let {users, subjects} = getData();
-    // Sacar alumno de todas las clases
     subjects = subjects.map(clase=> ({
       ...clase,
       inscritos: (clase.inscritos||[]).filter(id=>id!==alumnoId),
       alumnos: Math.max(0, (clase.alumnos||1)-1)
     }));
     users = users.filter(u=>u.id!==alumnoId);
+    
+    // LOCAL - TODAS las keys
     localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
     localStorage.setItem('ceut_users_v2', JSON.stringify(users));
-    addLog(`🗑️ Alumno eliminado del sistema: ${alumnoId}`);
+    localStorage.setItem('ceut_clases', JSON.stringify(subjects));
+    localStorage.setItem('ceut_usuarios', JSON.stringify(users));
+    
+    // NUBE - Actualizar clases sin este alumno y usuarios
+    try{
+      for(let clase of subjects){
+        await db.collection('clases').doc(clase.id).set(clase, {merge:true});
+      }
+      await db.collection('ceut_data').doc('subjects').set({data: subjects, updatedAt: new Date().toISOString()}, {merge:false});
+      await db.collection('ceut_data').doc('users').set({data: users, updatedAt: new Date().toISOString()}, {merge:false});
+    }catch(e){}
+    
+    addLog(`🗑️ Alumno eliminado DEFINITIVAMENTE de nube y local: ${alumnoId}`);
     loadAllData();
   };
 
-  window.psicoDeleteDocente = function(docenteId){
-    if(!confirm('¿ELIMINAR ESTE DOCENTE?')) return;
+  window.psicoDeleteDocente = async function(docenteId){
+    if(!confirm('¿ELIMINAR ESTE DOCENTE DEFINITIVAMENTE?\n\nSe borrará de la NUBE y no volverá a aparecer.')) return;
+    
+    try{
+      await db.collection('usuarios').doc(docenteId).delete();
+      console.log('🗑️ Docente eliminado de nube:', docenteId);
+    }catch(e){}
+    
     let {users} = getData();
     users = users.filter(u=>u.id!==docenteId);
     localStorage.setItem('ceut_users_v2', JSON.stringify(users));
-    addLog(`🗑️ Docente eliminado: ${docenteId}`);
+    localStorage.setItem('ceut_usuarios', JSON.stringify(users));
+    
+    try{
+      await db.collection('ceut_data').doc('users').set({data: users, updatedAt: new Date().toISOString()}, {merge:false});
+    }catch(e){}
+    
+    addLog(`🗑️ Docente eliminado DEFINITIVAMENTE de nube y local: ${docenteId}`);
     loadAllData();
   };
 
-  window.psicoDeleteRecurso = function(claseId, moduloId, recursoId){
-    if(!confirm('¿ELIMINAR ESTE RECURSO?')) return;
+  window.psicoDeleteRecurso = async function(claseId, moduloId, recursoId){
+    if(!confirm('¿ELIMINAR ESTE RECURSO DEFINITIVAMENTE?\n\nSe borrará de la NUBE.')) return;
     let {subjects} = getData();
     subjects = subjects.map(clase=>{
       if(clase.id!==claseId) return clase;
@@ -755,7 +869,17 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
       };
     });
     localStorage.setItem('ceut_subjects_v2', JSON.stringify(subjects));
-    addLog(`🗑️ Recurso eliminado: ${recursoId} de ${claseId}/${moduloId}`);
+    localStorage.setItem('ceut_clases', JSON.stringify(subjects));
+    
+    let claseActualizada = subjects.find(c=>c.id===claseId);
+    if(claseActualizada){
+      try{
+        await db.collection('clases').doc(claseId).set(claseActualizada, {merge:true});
+        await db.collection('ceut_data').doc('subjects').set({data: subjects, updatedAt: new Date().toISOString()}, {merge:false});
+      }catch(e){}
+    }
+    
+    addLog(`🗑️ Recurso eliminado DEFINITIVAMENTE de nube y local: ${recursoId}`);
     loadAllData();
   };
 
