@@ -2,444 +2,51 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <meta name="theme-color" content="#150D33">
 <style>
 
-/* =====================================================
-   PORTAL CEUT - VERSIÓN DEFINITIVA
-   - Responsive perfecto para cualquier dispositivo
-   - Letra 11 para datos registrados
-   - Sin brillo excesivo, colores suaves
-   - Vista previa grande y funcional
-   ===================================================== */
-
-/* === RESET Y BASE === */
+/* PORTAL CEUT - FIX SIN SOLO LOGO - BALANCEADO */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { font-size: 16px; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-body { 
-  margin: 0; 
-  overflow-x: hidden; 
-  width: 100%; 
-  min-width: 320px;
-  background: #FFFEF7 !important;
-  color: #150D33;
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+html { overflow-x: hidden; }
+body { overflow-x: hidden; width: 100%; min-width: 320px; background: #FFFEF7; margin: 0; }
+
+.shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: 0 2px 8px rgba(21,13,51,0.06) !important; }
+.shadow { box-shadow: 0 1px 4px rgba(21,13,51,0.05) !important; }
+
+#nube-container{position:fixed;bottom:12px;right:12px;z-index:40;pointer-events:none;display:flex;flex-direction:column;gap:6px;align-items:flex-end;max-width:90vw}
+#nube-status{pointer-events:auto;font-size:10px!important;padding:6px 10px!important;border-radius:12px!important;background:#150D33!important;color:white!important;border:1px solid #FFB800!important;max-width:200px}
+#nube-top-status{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;background:#150D33;color:#FFB800;padding:4px 10px;border-radius:10px;font-weight:700;font-size:9px;border:1px solid #FFB800;pointer-events:none;white-space:nowrap;max-width:90vw}
+
+input[placeholder*="NOMBRE"], input[placeholder*="CORREO"], input[placeholder*="CONTRASEÑA"],
+input[placeholder*="CLAVE"], input[placeholder*="MATERIA"], input[placeholder*="CARRERA"],
+input[placeholder*="GRUPO"], input[placeholder*="TÍTULO"], input[placeholder*="ej."],
+input[placeholder*="NOMBRE COMPLETO"], input[placeholder*="INSTITUCIONAL"],
+#psico-recursos-table td, #psico-clases-table td, #psico-alumnos-table td, #psico-docentes-table td,
+.psico-table td, #psico-recursos-table th, #psico-clases-table th, #psico-alumnos-table th, #psico-docentes-table th, .psico-table th,
+.psico-stat .label, .psico-stat .num, .psico-badge { font-size: 11px !important; }
+
+.border-t-2.border-\[\#150D33\]\/10 iframe, .border-t-2 iframe {
+  width: 100% !important; background: white !important; display: block !important;
+  border: 1px solid rgba(21,13,51,0.1) !important; border-radius: 8px !important;
 }
 
-/* Reducir brillo general - colores más suaves */
-.bg-white {
-  background-color: #FFFEF7 !important;
-}
-.bg-\[\#FFFEF7\] {
-  background-color: #FFFEF7 !important;
-}
+@media (max-width: 1024px){ .lg\:w-\[52\%\]{width:100%!important} .lg\:flex-row{flex-direction:column!important} .lg\:min-h-screen{min-height:auto!important} .min-h-\[46vh\]{min-height:50vh!important} .lg\:p-12{padding:1.5rem!important} .lg\:text-\[46px\]{font-size:28px!important} }
+@media (max-width: 768px){ .max-w-\[1440px\]{padding-left:1rem!important;padding-right:1rem!important} .h-\[68px\]{height:56px!important} .text-\[28px\]{font-size:20px!important} .grid-cols-2{grid-template-columns:1fr!important} .lg\:grid-cols-4{grid-template-columns:repeat(2,1fr)!important} .md\:grid-cols-2{grid-template-columns:1fr!important} .xl\:grid-cols-3{grid-template-columns:1fr!important} .max-w-\[640px\]{max-width:94vw!important;width:94vw!important;margin:8px auto!important;max-height:92vh!important;overflow-y:auto!important} .border-t-2 iframe{height:50vh!important;min-height:350px!important} }
+@media (max-width: 480px){ .p-8{padding:12px!important} .px-5{padding-left:10px!important;padding-right:10px!important} .text-\[34px\]{font-size:20px!important} .rounded-\[24px\]{border-radius:14px!important} .w-\[120px\]{width:72px!important;height:72px!important} .max-w-\[640px\], .max-w-\[520px\], .max-w-\[480px\]{max-width:96vw!important;width:96vw!important;margin:4px auto!important} .border-t-2 iframe{height:45vh!important;min-height:300px!important} .flex.items-center.justify-between{flex-wrap:wrap!important;gap:8px!important} }
+@media (max-width: 360px){ .text-\[34px\]{font-size:18px!important} .grid-cols-2, .lg\:grid-cols-4{grid-template-columns:1fr!important} }
 
-/* Quitar brillos excesivos */
-.shadow-lg, .shadow-xl, .shadow-2xl {
-  box-shadow: 0 4px 12px rgba(21,13,51,0.08) !important;
-}
-.shadow {
-  box-shadow: 0 2px 8px rgba(21,13,51,0.06) !important;
-}
-
-/* === NUBE INDICADORES - SIN BRILLO EXCESIVO === */
-#nube-container {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  left: auto;
-  z-index: 40;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-end;
-  max-width: calc(100vw - 32px);
-}
-
-#nube-status {
-  pointer-events: auto;
-  font-size: 11px !important;
-  padding: 8px 14px !important;
-  border-radius: 20px !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-  border: 1px solid rgba(255,255,255,0.3) !important;
-  max-width: 280px;
-  word-break: break-word;
-  backdrop-filter: blur(4px) !important;
-  opacity: 0.95;
-}
-
-#nube-top-status {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  background: #10B981;
-  color: white;
-  padding: 5px 12px;
-  border-radius: 16px;
-  font-weight: 700;
-  font-family: system-ui;
-  font-size: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(255,255,255,0.3);
-  pointer-events: none;
-  white-space: nowrap;
-  max-width: 90vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#nube-top-status.desconectado { background: #DC2626; }
-#nube-top-status.conectando { background: #D97706; }
-#nube-top-status .dot {
-  width: 5px;
-  height: 5px;
-  background: white;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-  flex-shrink: 0;
-}
-
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-
-/* =====================================================
-   LETRA 11 PARA DATOS REGISTRADOS - DEFINITIVO
-   ===================================================== */
-
-/* Todos los inputs de datos registrados */
-input[placeholder*="NOMBRE"],
-input[placeholder*="CORREO"],
-input[placeholder*="CONTRASEÑA"],
-input[placeholder*="CLAVE"],
-input[placeholder*="MATERIA"],
-input[placeholder*="CARRERA"],
-input[placeholder*="GRUPO"],
-input[placeholder*="TÍTULO"],
-input[placeholder*="ej."],
-input[placeholder*="NOMBRE COMPLETO"],
-input[placeholder*="INSTITUCIONAL"],
-input[type="text"],
-input[type="email"],
-input[type="password"],
-textarea,
-select {
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  line-height: 1.4 !important;
-}
-
-/* Tablas de datos registrados */
-#psico-recursos-table,
-#psico-clases-table,
-#psico-alumnos-table,
-#psico-docentes-table,
-.psico-table,
-table {
-  font-size: 11px !important;
-}
-
-#psico-recursos-table td,
-#psico-clases-table td,
-#psico-alumnos-table td,
-#psico-docentes-table td,
-.psico-table td,
-table td {
-  font-size: 11px !important;
-  font-weight: 400 !important;
-  line-height: 1.4 !important;
-  padding: 8px 10px !important;
-}
-
-#psico-recursos-table th,
-#psico-clases-table th,
-#psico-alumnos-table th,
-#psico-docentes-table th,
-.psico-table th,
-table th {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.3px !important;
-  padding: 8px 10px !important;
-}
-
-/* Badges, stats, etiquetas */
-.psico-badge,
-.psico-stat .label,
-.psico-stat .num,
-.psico-stat,
-.rounded-\[12px\] .font-bold.text-\[13px\],
-.font-bold.text-\[13px\],
-.text-\[11px\],
-.text-\[9px\],
-.text-\[10px\],
-.text-\[12px\],
-.text-\[13px\],
-span[class*="font-bold"],
-div[class*="font-bold"],
-p[class*="font-bold"] {
-  font-size: 11px !important;
-}
-
-/* Cards y datos */
-.rounded-\[12px\].bg-white.border-2.border-\[\#150D33\] .font-bold,
-.flex.items-center.justify-between.mb-3 h5,
-.grid.gap-2 .font-bold,
-.rounded-\[12px\] .flex.items-center.justify-between.px-4.py-3.bg-white span,
-.rounded-\[12px\] .flex.items-center.justify-between.px-4.py-3.bg-white p,
-.rounded-\[12px\] .flex.items-center.justify-between.px-4.py-3.bg-white div,
-div[class*="text-\[11px\]"],
-div[class*="text-\[10px\]"],
-div[class*="text-\[9px\]"],
-p[class*="text-\[11px\]"],
-p[class*="text-\[10px\]"],
-ul li, ol li,
-div[class*="inscritos"],
-div[class*="alumnos"],
-div[class*="clases"] {
-  font-size: 11px !important;
-}
-
-/* === VISTA PREVIA RECURSOS - RESPONSIVA Y SIN BRILLO === */
-.border-t-2.border-\[\#150D33\]\/10,
-.border-t-2 {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 100% !important;
-  background: #FFFEF7 !important;
-  border-color: rgba(21,13,51,0.08) !important;
-}
-
-.border-t-2.border-\[\#150D33\]\/10 iframe,
-.border-t-2 iframe {
-  width: 100% !important;
-  background: white !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  border: none !important;
-  border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
-}
-
-iframe[src^="data:application/pdf"] {
-  background: white !important;
-}
-
-iframe[src*="youtube.com"],
-iframe[src*="youtu.be"],
-iframe[src*="drive.google.com"],
-iframe[src*="docs.google.com"] {
-  background: #000 !important;
-}
-
-/* Contenedores sin brillo */
-.rounded-\[12px\].bg-white.border-2.border-\[\#150D33\] {
-  overflow: visible !important;
-  display: block !important;
-  width: 100% !important;
-  background: #FFFEF7 !important;
-  border-color: rgba(21,13,51,0.1) !important;
-  box-shadow: 0 2px 8px rgba(21,13,51,0.04) !important;
-}
-
-div.border-t-2 {
-  min-height: 350px !important;
-}
-
-video {
-  display: block !important;
-  visibility: visible !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  height: auto !important;
-  background: #000 !important;
-  border-radius: 8px !important;
-}
-
-img {
-  max-width: 100% !important;
-  height: auto !important;
-}
-
-/* === RESPONSIVO PERFECTO PARA CUALQUIER DISPOSITIVO === */
-
-/* Móvil pequeño 320-480px */
-@media (max-width: 480px) {
-  .p-8 { padding: 12px !important; }
-  .px-5 { padding-left: 10px !important; padding-right: 10px !important; }
-  .text-\[34px\] { font-size: 18px !important; line-height: 1.2 !important; }
-  .text-\[28px\] { font-size: 16px !important; }
-  .rounded-\[24px\] { border-radius: 12px !important; }
-  .w-\[120px\] { width: 64px !important; height: 64px !important; }
-  .gap-6 { gap: 10px !important; }
-  .h-\[68px\] { height: 52px !important; padding: 0 10px !important; }
-  .max-w-\[1440px\] { padding-left: 10px !important; padding-right: 10px !important; }
-  .max-w-\[640px\], .max-w-\[520px\], .max-w-\[480px\] { max-width: 96vw !important; width: 96vw !important; margin: 4px !important; border-radius: 12px !important; max-height: 92vh !important; overflow-y: auto !important; }
-  .fixed.inset-0 { padding: 4px !important; }
-  .grid-cols-2, .lg\:grid-cols-4, .md\:grid-cols-2, .xl\:grid-cols-3 { grid-template-columns: 1fr !important; gap: 8px !important; }
-  input, textarea, select, button { font-size: 11px !important; }
-  input { padding: 10px 12px !important; min-height: 40px !important; }
-  button { min-height: 40px !important; padding: 8px 14px !important; }
-  .border-t-2 iframe { height: 50vh !important; min-height: 320px !important; }
-  #nube-top-status { top: 6px !important; font-size: 8px !important; padding: 4px 8px !important; }
-  #nube-status { font-size: 9px !important; padding: 6px 10px !important; bottom: 10px !important; right: 10px !important; }
-  #nube-container { bottom: 10px !important; right: 10px !important; }
-}
-
-/* Móvil grande 481-640px */
-@media (min-width: 481px) and (max-width: 640px) {
-  .grid-cols-2 { grid-template-columns: 1fr !important; }
-  .lg\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
-  .text-\[34px\] { font-size: 20px !important; }
-  .text-\[28px\] { font-size: 18px !important; }
-  .p-8 { padding: 16px !important; }
-  .max-w-\[640px\] { max-width: 94vw !important; width: 94vw !important; }
-  .border-t-2 iframe { height: 55vh !important; min-height: 380px !important; }
-}
-
-/* Tablet 641-768px */
-@media (min-width: 641px) and (max-width: 768px) {
-  .lg\:w-\[52\%\] { width: 100% !important; }
-  .lg\:flex-row { flex-direction: column !important; }
-  .lg\:min-h-screen { min-height: auto !important; }
-  .min-h-\[46vh\] { min-height: 45vh !important; }
-  .lg\:p-12 { padding: 20px !important; }
-  .lg\:text-\[46px\] { font-size: 28px !important; }
-  .max-w-\[1440px\] { padding-left: 16px !important; padding-right: 16px !important; }
-  .grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
-  .lg\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
-  .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
-  .xl\:grid-cols-3 { grid-template-columns: repeat(2, 1fr) !important; }
-  .max-w-\[640px\] { max-width: 90vw !important; }
-  .border-t-2 iframe { height: 60vh !important; min-height: 450px !important; }
-  .h-\[68px\] { height: 60px !important; }
-}
-
-/* Tablet grande / Laptop pequeña 769-1024px */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .lg\:w-\[52\%\] { width: 100% !important; }
-  .lg\:flex-row { flex-direction: column !important; }
-  .lg\:p-12 { padding: 24px !important; }
-  .lg\:text-\[46px\] { font-size: 32px !important; }
-  .max-w-\[640px\] { max-width: 85vw !important; }
-  .border-t-2 iframe { height: 65vh !important; min-height: 500px !important; }
-}
-
-/* Desktop 1025-1280px */
-@media (min-width: 1025px) and (max-width: 1280px) {
-  .max-w-\[640px\] { max-width: 700px !important; }
-  .border-t-2 iframe { height: 70vh !important; min-height: 600px !important; }
-  iframe[src^="data:application/pdf"] { height: 75vh !important; min-height: 650px !important; }
-}
-
-/* Desktop grande 1281-1440px */
-@media (min-width: 1281px) and (max-width: 1440px) {
-  .max-w-\[1440px\] { max-width: 1280px !important; }
-  .max-w-\[640px\] { max-width: 720px !important; }
-  .border-t-2 iframe { height: 75vh !important; min-height: 650px !important; }
-}
-
-/* Desktop extra grande 1441px+ */
-@media (min-width: 1441px) {
-  .max-w-\[1440px\] { max-width: 1360px !important; }
-  .max-w-\[640px\] { max-width: 760px !important; }
-  .border-t-2 iframe { height: 80vh !important; min-height: 700px !important; max-height: 85vh !important; }
-  iframe[src^="data:application/pdf"] { height: 82vh !important; min-height: 750px !important; }
-}
-
-/* Móvil horizontal */
-@media (max-height: 500px) and (max-width: 900px) {
-  .min-h-\[46vh\] { min-height: 70vh !important; }
-  #nube-top-status { top: 4px !important; font-size: 7px !important; padding: 3px 6px !important; }
-  .border-t-2 iframe { height: 70vh !important; min-height: 280px !important; }
-  .h-\[68px\] { height: 48px !important; }
-}
-
-/* Touch devices */
-@media (hover: none) and (pointer: coarse) {
-  button, a, [role="button"] { min-height: 44px !important; min-width: 44px !important; }
-  input, textarea, select { font-size: 11px !important; min-height: 44px !important; }
-}
-
-/* iOS Safari */
-@supports (-webkit-touch-callout: none) {
-  .min-h-screen { min-height: -webkit-fill-available !important; }
-  input, textarea, select { font-size: 11px !important; }
-  body { -webkit-overflow-scrolling: touch !important; }
-}
-
-/* Reducir brillo en general */
-.bg-white, .bg-\[\#FFFEF7\], .bg-\[\#FFFFFF\] {
-  filter: brightness(0.98) !important;
-}
-
-.rounded-\[12px\], .rounded-\[14px\], .rounded-\[24px\] {
-  box-shadow: 0 1px 4px rgba(21,13,51,0.06) !important;
-}
-
-/* Panel admin responsive con letra 11 */
-#psico-float-btn {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 9999;
-  background: #150D33;
-  color: #FFB800;
-  border: 2px solid #FFB800;
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-family: Outfit, sans-serif;
-  font-weight: 800;
-  font-size: 11px !important;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(21,13,51,0.2);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-@media (max-width: 768px) {
-  #psico-float-btn { bottom: 14px; left: 12px; padding: 6px 10px; font-size: 9px !important; }
-  #psico-admin-overlay { padding: 8px !important; }
-  #psico-admin-panel { border-radius: 12px !important; border-width: 2px !important; }
-  #psico-header { padding: 12px 14px !important; }
-  #psico-header h2 { font-size: 12px !important; }
-  #psico-content { padding: 12px !important; }
-  .psico-stat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
-  .psico-stat { padding: 10px !important; }
-  .psico-stat .num { font-size: 16px !important; }
-  .psico-stat .label { font-size: 11px !important; }
-}
-
-@media (max-width: 480px) {
-  #psico-float-btn { bottom: 10px; left: 8px; padding: 5px 8px; font-size: 8px !important; }
-  .psico-stat-grid { grid-template-columns: 1fr !important; }
-  #psico-pin-box { margin: 16px auto !important; padding: 16px !important; border-radius: 12px !important; }
-}
-
-/* Fix para que todo sea visible */
-iframe, video, img {
-  visibility: visible !important;
-  opacity: 1 !important;
-}
+.rounded-\[12px\].bg-white.border-2.border-\[\#150D33\]{border-width:1px!important;border-radius:10px!important}
+#psico-float-btn{position:fixed;bottom:16px;left:12px;z-index:9999;background:#150D33;color:#FFB800;border:1px solid #FFB800;border-radius:20px;padding:6px 12px;font-weight:700;font-size:10px!important;cursor:pointer}
+@media (max-width: 480px){ #psico-float-btn{bottom:8px;left:8px;padding:5px 10px;font-size:8px!important} }
 
 </style>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
-// === FIREBASE CONFIG - PROYECTO MIXCEUT - DEFINITIVO ===
+// Firebase MIXCEUT - Instant sync sin brillo
 const firebaseConfig = {
   apiKey: "AIzaSyB9va23hvQOgu2RnaPysKic9uuFEAO675o",
   authDomain: "mixceut.firebaseapp.com",
@@ -448,515 +55,217 @@ const firebaseConfig = {
   messagingSenderId: "81153498875",
   appId: "1:81153498875:web:7cc2803c20c13bc3705a5e"
 };
-
-if(!firebase.apps.length){
-  firebase.initializeApp(firebaseConfig);
-}
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
-window.db = db;
-window.auth = auth;
-window.firebase = firebase;
+window.db = db; window.auth = auth;
+db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+auth.signInAnonymously().catch(()=>{});
+auth.onAuthStateChanged(u=>{ if(u) window.__AUTH_OK__=true; });
 
-// Auth anónima para permitir escritura
-auth.signInAnonymously().catch(e=>{
-  console.log('Auth anónima error (puede ser ya logueado):', e.message);
-});
-
-auth.onAuthStateChanged(user=>{
-  if(user){
-    console.log('☁️ Auth OK:', user.uid);
-    window.__NUBE_AUTH_OK__ = true;
+function crearIndicador(t,s){
+  let i=document.getElementById('nube-status');
+  if(!i){
+    i=document.createElement('div'); i.id='nube-status';
+    i.style.cssText='position:fixed;bottom:10px;right:10px;background:'+s+';color:white;padding:5px 10px;border-radius:10px;font-weight:700;z-index:40;font-family:system-ui;font-size:9px;display:flex;align-items:center;gap:6px;max-width:200px;pointer-events:auto;border:1px solid rgba(255,255,255,0.2);';
+    i.innerHTML='<span id="nube-text">'+t+'</span><button id="nube-close" style="background:rgba(255,255,255,0.2);border:none;color:white;width:16px;height:16px;border-radius:50%;cursor:pointer;font-size:10px;display:grid;place-items:center;">×</button>';
+    let c=document.getElementById('nube-container');
+    if(!c){ c=document.createElement('div'); c.id='nube-container'; c.style.cssText='position:fixed;bottom:10px;right:10px;z-index:30;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none;'; if(document.body){ document.body.appendChild(c); c.appendChild(i); } }
+    setTimeout(()=>{ let b=document.getElementById('nube-close'); if(b) b.onclick=()=>{ i.style.display='none'; }; },100);
   }
-});
-
-console.log('🔥 Firebase inicializado - Proyecto mixceut - db definido');
+  let x=document.getElementById('nube-text'); if(x) x.textContent=t;
+  i.style.background=s; i.style.display='flex';
+  if(s==='#150D33'||s==='#10B981') setTimeout(()=>{ i.style.display='none'; },2500);
+}
+window.__SYNC_V__="4.0-INSTANT";
+function getBlacklist(){ try{ return JSON.parse(localStorage.getItem('ceut_borrados')||'{"usuarios":[],"clases":[]}'); }catch(e){ return {usuarios:[], clases:[]}; } }
+async function getBlacklistNube(){ try{ let s=await db.collection('ceut_config').doc('borrados').get(); if(s.exists) return s.data(); }catch(e){} return getBlacklist(); }
+function isBlacklisted(t,i){ let b=getBlacklist(); if(t==='usuario'||t==='usuarios') return b.usuarios.includes(i); if(t==='clase'||t==='clases') return b.clases.includes(i); return false; }
+async function addToBlacklist(t,i){ let b=getBlacklist(); if(t==='usuario'||t==='usuarios'){ if(!b.usuarios.includes(i)) b.usuarios.push(i); } if(t==='clase'||t==='clases'){ if(!b.clases.includes(i)) b.clases.push(i); } localStorage.setItem('ceut_borrados',JSON.stringify(b)); try{ await db.collection('ceut_config').doc('borrados').set(b,{merge:true}); }catch(e){} }
+async function guardarEnNube(c,id,d){ if(!id||!d) return false; if(isBlacklisted(c,id)) return false; try{ let clean=JSON.parse(JSON.stringify(d)); clean.updatedAt=new Date().toISOString(); await db.collection(c).doc(id).set(clean,{merge:true}); try{ if(c==='clases'){ let s=await db.collection('ceut_data').doc('subjects').get(); let data=s.exists?(s.data().data||[]):[]; let f=data.filter(x=>x.id!==id); f.push(clean); f=f.filter(x=>!isBlacklisted('clases',x.id)); await db.collection('ceut_data').doc('subjects').set({data:f,updatedAt:new Date().toISOString()},{merge:false}); } if(c==='usuarios'){ let s=await db.collection('ceut_data').doc('users').get(); let data=s.exists?(s.data().data||[]):[]; let f=data.filter(x=>x.id!==id); f.push(clean); f=f.filter(x=>!isBlacklisted('usuarios',x.id)); await db.collection('ceut_data').doc('users').set({data:f,updatedAt:new Date().toISOString()},{merge:false}); } }catch(e){} return true; }catch(e){ return false; } }
+async function sincronizarTodoDesdeNube(m=false){ try{ try{ let blN=await getBlacklistNube(); let blL=getBlacklist(); let blM={usuarios:[...new Set([...(blL.usuarios||[]),...(blN.usuarios||[])])],clases:[...new Set([...(blL.clases||[]),...(blN.clases||[])])]}; localStorage.setItem('ceut_borrados',JSON.stringify(blM)); }catch(e){} let bl=getBlacklist(); let [cSnap,uSnap,sSnap,u2Snap]=await Promise.all([db.collection('clases').get().catch(()=>({forEach:()=>{}})),db.collection('usuarios').get().catch(()=>({forEach:()=>{}})),db.collection('ceut_data').doc('subjects').get().catch(()=>({exists:false})),db.collection('ceut_data').doc('users').get().catch(()=>({exists:false}))]); let cMap=new Map(),uMap=new Map(); function addC(d){ if(!d||!d.id) return; if(bl.clases.includes(d.id)) return; if(!cMap.has(d.id)){ cMap.set(d.id,d); }else{ let ex=cMap.get(d.id); if(new Date(d.updatedAt||0)>new Date(ex.updatedAt||0)) cMap.set(d.id,d); } } function addU(d){ if(!d||!d.id) return; if(bl.usuarios.includes(d.id)) return; if(!uMap.has(d.id)){ uMap.set(d.id,d); }else{ let ex=uMap.get(d.id); if(new Date(d.updatedAt||0)>new Date(ex.updatedAt||0)) uMap.set(d.id,d); } } cSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; addC(data); }); uSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; addU(data); }); if(sSnap.exists){ (sSnap.data().data||[]).forEach(addC); } if(u2Snap.exists){ (u2Snap.data().data||[]).forEach(addU); } let clases=Array.from(cMap.values()), usuarios=Array.from(uMap.values()); localStorage.setItem('ceut_clases',JSON.stringify(clases)); localStorage.setItem('ceut_subjects_v2',JSON.stringify(clases)); localStorage.setItem('ceut_subjects',JSON.stringify(clases)); localStorage.setItem('ceut_usuarios',JSON.stringify(usuarios)); localStorage.setItem('ceut_users_v2',JSON.stringify(usuarios)); localStorage.setItem('ceut_users',JSON.stringify(usuarios)); window.__CLASES_NUBE__=clases; window.__USUARIOS_NUBE__=usuarios; window.__NUBE_ACTIVA__=true; try{ window.dispatchEvent(new CustomEvent('ceut-nube-sync',{detail:{clases,usuarios}})); }catch(e){} if(m) crearIndicador(`☁️ ${clases.length}c • ${usuarios.length}u ✓`,'#150D33'); return {clases,usuarios}; }catch(e){ return {clases:[],usuarios:[]}; } }
+async function migrarLocalANube(){ let cSnap=await db.collection('clases').get().catch(()=>({empty:true,size:0})); let uSnap=await db.collection('usuarios').get().catch(()=>({empty:true,size:0})); if((cSnap.empty||cSnap.size===0)&&(uSnap.empty||uSnap.size===0)){ try{ let cl1=JSON.parse(localStorage.getItem('ceut_clases')||'[]'),cl2=JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]'); let us1=JSON.parse(localStorage.getItem('ceut_usuarios')||'[]'),us2=JSON.parse(localStorage.getItem('ceut_users_v2')||'[]'); let cMap=new Map(); [...cl1,...cl2].forEach(c=>{ if(c&&c.id&&!isBlacklisted('clases',c.id)) cMap.set(c.id,c); }); let uMap=new Map(); [...us1,...us2].forEach(u=>{ if(u&&u.id&&!isBlacklisted('usuarios',u.id)) uMap.set(u.id,u); }); for(let c of cMap.values()) await guardarEnNube('clases',c.id,c); for(let u of uMap.values()) await guardarEnNube('usuarios',u.id,u); }catch(e){} } return await sincronizarTodoDesdeNube(false); }
+async function cargarNube(){ if(!localStorage.getItem('ceut_device_id')) localStorage.setItem('ceut_device_id','d_'+Date.now()); await migrarLocalANube(); let r=await sincronizarTodoDesdeNube(true); try{ db.collection('clases').onSnapshot(snap=>{ let clases=[]; snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; if(!isBlacklisted('clases',data.id)) clases.push(data); }); let act=JSON.parse(localStorage.getItem('ceut_clases')||'[]'); if(JSON.stringify(clases.map(c=>c.id).sort())!==JSON.stringify(act.map(c=>c.id).sort())){ localStorage.setItem('ceut_clases',JSON.stringify(clases)); localStorage.setItem('ceut_subjects_v2',JSON.stringify(clases)); window.__CLASES_NUBE__=clases; window.dispatchEvent(new CustomEvent('ceut-nube-sync',{detail:{clases}})); } }); db.collection('usuarios').onSnapshot(snap=>{ let usuarios=[]; snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; if(!isBlacklisted('usuarios',data.id)) usuarios.push(data); }); let act=JSON.parse(localStorage.getItem('ceut_usuarios')||'[]'); if(JSON.stringify(usuarios.map(u=>u.id).sort())!==JSON.stringify(act.map(u=>u.id).sort())){ localStorage.setItem('ceut_usuarios',JSON.stringify(usuarios)); localStorage.setItem('ceut_users_v2',JSON.stringify(usuarios)); window.__USUARIOS_NUBE__=usuarios; window.dispatchEvent(new CustomEvent('ceut-nube-sync',{detail:{usuarios}})); } }); db.collection('ceut_config').doc('borrados').onSnapshot(snap=>{ if(snap.exists){ let blN=snap.data(), blL=getBlacklist(); let merged={usuarios:[...new Set([...(blL.usuarios||[]),...(blN.usuarios||[])])],clases:[...new Set([...(blL.clases||[]),...(blN.clases||[])])]}; localStorage.setItem('ceut_borrados',JSON.stringify(merged)); sincronizarTodoDesdeNube(false); } }); }catch(e){} return r; }
+window.validarClaveNube=async function(claveRaw){ let clave=claveRaw.trim().toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9-]/g,''); if(!clave) return null; if(!window.__CLASES_NUBE__||window.__CLASES_NUBE__.length===0) await sincronizarTodoDesdeNube(false); try{ let cl1=JSON.parse(localStorage.getItem('ceut_clases')||'[]'),cl2=JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]'); let todas=[...cl1,...cl2,...(window.__CLASES_NUBE__||[])]; let map=new Map(); todas.forEach(c=>{ if(c&&c.id&&!isBlacklisted('clases',c.id)) map.set(c.id,c); }); todas=Array.from(map.values()); let f=todas.find(c=>c.clave===clave||c.clave.replace(/-/g,'')===clave.replace(/-/g,'')); if(f) return f; }catch(e){} try{ let snap=await db.collection('clases').where('clave','==',clave).get(); if(!snap.empty){ let d=snap.docs[0].data(); if(!isBlacklisted('clases',d.id||snap.docs[0].id)) return d; } }catch(e){} return null; };
+window.guardarEnNube=guardarEnNube; window.cargarNube=cargarNube; window.sincronizarTodoDesdeNube=sincronizarTodoDesdeNube; window.forzarSincronizacionClaves=sincronizarTodoDesdeNube; window.migrarLocalANube=migrarLocalANube; window.getBlacklist=getBlacklist; window.addToBlacklist=addToBlacklist; window.isBlacklisted=isBlacklisted;
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) sincronizarTodoDesdeNube(false); });
+window.addEventListener('online', ()=>{ sincronizarTodoDesdeNube(true); });
+window.addEventListener('focus', ()=>{ sincronizarTodoDesdeNube(false); });
+setTimeout(()=>{ cargarNube().catch(e=>console.error(e)); },100);
 </script>
 <script>
 
-function crearIndicador(texto, color){
-  let ind = document.getElementById('nube-status');
-  if(!ind){
-    ind = document.createElement('div');
-    ind.id = 'nube-status';
-    ind.style.cssText = 'position:fixed;bottom:12px;right:12px;left:auto;background:'+color+';color:white;padding:6px 12px 6px 10px;border-radius:12px;font-weight:700;z-index:40;font-family:system-ui;font-size:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:flex;align-items:center;gap:8px;max-width:280px;backdrop-filter:blur(8px);opacity:0.92;transition:all 0.3s ease;pointer-events:auto;';
-    ind.innerHTML = '<span id="nube-text">'+texto+'</span><button id="nube-close" style="background:rgba(255,255,255,0.2);border:none;color:white;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:grid;place-items:center;flex-shrink:0;">×</button>';
-    let container = document.getElementById('nube-container');
-    if(!container){
-      container = document.createElement('div');
-      container.id = 'nube-container';
-      container.style.cssText = 'position:fixed;bottom:12px;right:12px;left:auto;z-index:40;pointer-events:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end;';
-      document.addEventListener('DOMContentLoaded', ()=>{
-        if(!document.getElementById('nube-container')) document.body.appendChild(container);
-        if(!document.getElementById('nube-status')) container.appendChild(ind);
-      });
-      if(document.body){
-        document.body.appendChild(container);
-        container.appendChild(ind);
-      }
-    }
-    setTimeout(()=>{
-      let closeBtn = document.getElementById('nube-close');
-      if(closeBtn){
-        closeBtn.onclick = ()=>{
-          ind.style.display='none';
-          setTimeout(()=>{ if(ind.parentNode) ind.parentNode.removeChild(ind); }, 300);
-        };
-      }
-    }, 100);
-  }
-  let txt = document.getElementById('nube-text');
-  if(txt) txt.textContent = texto;
-  ind.style.background = color;
-  ind.style.display = 'flex';
-  if(color==='#10B981'){
-    setTimeout(()=>{ ind.style.display='none'; }, 3000);
-  }
-}
-
-
-
-// =====================================================
-// SISTEMA DE SINCRONIZACIÓN TOTAL EN NUBE - CEUT DEFINITIVO
-// - Todo en Firestore, visible igual en cualquier dispositivo
-// - Lista negra sincronizada en nube
-// - Cloud-first: siempre carga de nube primero
-// =====================================================
-
-window.__SYNC_VERSION__ = "3.0-CLOUD-FIRST-DEFINITIVO";
-
-// Blacklist con sync en nube
-function getBlacklist(){
-  try{
-    return JSON.parse(localStorage.getItem('ceut_borrados')||'{"usuarios":[],"clases":[]}');
-  }catch(e){
-    return {usuarios:[], clases:[]};
-  }
-}
-
-async function getBlacklistNube(){
-  try{
-    let snap = await db.collection('ceut_config').doc('borrados').get();
-    if(snap.exists){
-      return snap.data();
-    }
-  }catch(e){}
-  return getBlacklist();
-}
-
-function isBlacklisted(tipo, id){
-  let bl = getBlacklist();
-  if(tipo==='usuario' || tipo==='usuarios') return bl.usuarios.includes(id);
-  if(tipo==='clase' || tipo==='clases') return bl.clases.includes(id);
-  return false;
-}
-
-async function addToBlacklist(tipo, id){
-  let bl = getBlacklist();
-  if(tipo==='usuario' || tipo==='usuarios'){
-    if(!bl.usuarios.includes(id)) bl.usuarios.push(id);
-  }
-  if(tipo==='clase' || tipo==='clases'){
-    if(!bl.clases.includes(id)) bl.clases.push(id);
-  }
-  localStorage.setItem('ceut_borrados', JSON.stringify(bl));
-  console.log('⛔ Agregado a lista negra local:', tipo, id);
-  
-  // Sincronizar blacklist a nube
-  try{
-    await db.collection('ceut_config').doc('borrados').set(bl, {merge:true});
-    console.log('☁️ Blacklist sincronizada a nube');
-  }catch(e){
-    console.log('Error sync blacklist a nube:', e);
-  }
-}
-
-// Guardar en nube - múltiples colecciones para redundancia
-async function guardarEnNube(coleccion, id, datos){
-  if(!id || !datos) return false;
-  if(isBlacklisted(coleccion, id)){
-    console.log('⛔ Bloqueado por lista negra:', coleccion, id);
-    return false;
-  }
-  
-  try{
-    let clean = JSON.parse(JSON.stringify(datos));
-    clean.updatedAt = new Date().toISOString();
-    clean.syncVersion = window.__SYNC_VERSION__;
-    clean.deviceId = localStorage.getItem('ceut_device_id') || 'unknown';
-    
-    // Guardar en colección principal
-    await db.collection(coleccion).doc(id).set(clean, {merge:true});
-    console.log('☁️ Guardado nube:', coleccion+'/'+id);
-    
-    // Backup en ceut_data
-    try{
-      if(coleccion==='clases'){
-        let snap = await db.collection('ceut_data').doc('subjects').get();
-        let data = snap.exists ? (snap.data().data||[]) : [];
-        let filtrado = data.filter(c=>c.id!==id);
-        filtrado.push(clean);
-        // Filtrar blacklist
-        filtrado = filtrado.filter(c=>!isBlacklisted('clases', c.id));
-        await db.collection('ceut_data').doc('subjects').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
-        await db.collection('ceut_data').doc('clases').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
-      }
-      if(coleccion==='usuarios'){
-        let snap = await db.collection('ceut_data').doc('users').get();
-        let data = snap.exists ? (snap.data().data||[]) : [];
-        let filtrado = data.filter(u=>u.id!==id);
-        filtrado.push(clean);
-        filtrado = filtrado.filter(u=>!isBlacklisted('usuarios', u.id));
-        await db.collection('ceut_data').doc('users').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
-        await db.collection('ceut_data').doc('usuarios').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
-      }
-    }catch(e){
-      console.log('Backup ceut_data falló:', e.message);
-    }
-    
-    return true;
-  }catch(e){
-    console.error('❌ Error guardando nube:', e);
-    crearIndicador('❌ ERROR NUBE: '+e.message.substring(0,25), '#DC2626');
-    return false;
-  }
-}
-
-// Sincronizar TODO desde nube - CLOUD FIRST
-async function sincronizarTodoDesdeNube(mostrarIndicador = true){
-  try{
-    if(mostrarIndicador) console.log('🔄 Sincronizando TODO desde nube - CLOUD FIRST...');
-    if(mostrarIndicador) crearIndicador('☁️ SINCRONIZANDO NUBE...', '#D97706');
-    
-    // Primero sincronizar blacklist desde nube
-    try{
-      let blNube = await getBlacklistNube();
-      let blLocal = getBlacklist();
-      let blMerged = {
-        usuarios: [...new Set([...(blLocal.usuarios||[]), ...(blNube.usuarios||[])])],
-        clases: [...new Set([...(blLocal.clases||[]), ...(blNube.clases||[])])]
-      };
-      localStorage.setItem('ceut_borrados', JSON.stringify(blMerged));
-    }catch(e){}
-    
-    let bl = getBlacklist();
-    
-    // Obtener de TODAS las fuentes en paralelo - PRIORIDAD NUBE
-    let [clasesSnap, usuariosSnap, subjectsBackupSnap, usersBackupSnap] = await Promise.all([
-      db.collection('clases').get().catch(()=>({forEach:()=>{}, docs:[]})),
-      db.collection('usuarios').get().catch(()=>({forEach:()=>{}, docs:[]})),
-      db.collection('ceut_data').doc('subjects').get().catch(()=>({exists:false})),
-      db.collection('ceut_data').doc('users').get().catch(()=>({exists:false}))
-    ]);
-    
-    let clasesMap = new Map();
-    let usuariosMap = new Map();
-    
-    function agregarClase(data){
-      if(!data || !data.id) return;
-      if(bl.clases.includes(data.id)) return;
-      // Si ya existe, quedarse con el más reciente
-      if(!clasesMap.has(data.id)){
-        clasesMap.set(data.id, data);
-      } else {
-        let existente = clasesMap.get(data.id);
-        let fechaExistente = new Date(existente.updatedAt||0);
-        let fechaNueva = new Date(data.updatedAt||0);
-        if(fechaNueva > fechaExistente){
-          clasesMap.set(data.id, data);
-        }
-      }
-    }
-    
-    function agregarUsuario(data){
-      if(!data || !data.id) return;
-      if(bl.usuarios.includes(data.id)) return;
-      if(!usuariosMap.has(data.id)){
-        usuariosMap.set(data.id, data);
-      } else {
-        let existente = usuariosMap.get(data.id);
-        let fechaExistente = new Date(existente.updatedAt||0);
-        let fechaNueva = new Date(data.updatedAt||0);
-        if(fechaNueva > fechaExistente){
-          usuariosMap.set(data.id, data);
-        }
-      }
-    }
-    
-    clasesSnap.forEach(d=>{
-      let data = d.data();
-      if(!data.id) data.id = d.id;
-      agregarClase(data);
-    });
-    
-    usuariosSnap.forEach(d=>{
-      let data = d.data();
-      if(!data.id) data.id = d.id;
-      agregarUsuario(data);
-    });
-    
-    if(subjectsBackupSnap.exists){
-      let data = subjectsBackupSnap.data().data||[];
-      data.forEach(agregarClase);
-    }
-    if(usersBackupSnap.exists){
-      let data = usersBackupSnap.data().data||[];
-      data.forEach(agregarUsuario);
-    }
-    
-    let clasesNube = Array.from(clasesMap.values());
-    let usuariosNube = Array.from(usuariosMap.values());
-    
-    // LIMPIEZA: Si hay datos locales que no están en nube y no están en blacklist, son datos viejos que deben eliminarse
-    // O si hay datos en nube que no están local, deben agregarse - NUBE ES LA VERDAD
-    // Guardar en localStorage - SOBRESCRIBIR TODO, nube es la verdad
-    localStorage.setItem('ceut_clases', JSON.stringify(clasesNube));
-    localStorage.setItem('ceut_subjects_v2', JSON.stringify(clasesNube));
-    localStorage.setItem('ceut_subjects', JSON.stringify(clasesNube));
-    localStorage.setItem('ceut_usuarios', JSON.stringify(usuariosNube));
-    localStorage.setItem('ceut_users_v2', JSON.stringify(usuariosNube));
-    localStorage.setItem('ceut_users', JSON.stringify(usuariosNube));
-    
-    window.__CLASES_NUBE__ = clasesNube;
-    window.__USUARIOS_NUBE__ = usuariosNube;
-    window.__NUBE_ACTIVA__ = true;
-    
-    // Disparar eventos para que React actualice
-    try{
-      window.dispatchEvent(new CustomEvent('ceut-nube-sync', {detail: {clases: clasesNube, usuarios: usuariosNube, timestamp: Date.now()}}));
-      // Forzar storage event para React
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'ceut_users_v2',
-        newValue: JSON.stringify(usuariosNube)
-      }));
-    }catch(e){}
-    
-    if(mostrarIndicador){
-      console.log(`✅ Sincronizadas ${clasesNube.length} clases y ${usuariosNube.length} usuarios desde nube`);
-      console.log('Claves:', clasesNube.map(c=>c.clave).join(', '));
-      crearIndicador(`☁️ ${clasesNube.length} cursos • ${usuariosNube.length} usuarios • ✓`, '#10B981');
-    }
-    
-    return {clases: clasesNube, usuarios: usuariosNube};
-  }catch(e){
-    console.error('❌ Error sincronizando:', e);
-    if(mostrarIndicador) crearIndicador('❌ ERROR SYNC: '+e.message.substring(0,20), '#DC2626');
-    return {clases:[], usuarios:[]};
-  }
-}
-
-async function migrarLocalANube(){
-  // En nueva versión, no migrar local a nube automáticamente, nube es la verdad
-  // Solo si no hay datos en nube, migrar local
-  let cSnap = await db.collection('clases').get().catch(()=>({empty:true, size:0}));
-  let uSnap = await db.collection('usuarios').get().catch(()=>({empty:true, size:0}));
-  
-  if((cSnap.empty || cSnap.size===0) && (uSnap.empty || uSnap.size===0)){
-    console.log('Nube vacía, migrando datos locales...');
-    try{
-      let clasesLocal = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
-      let clasesV2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
-      let usuariosLocal = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
-      let usuariosV2 = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
-      
-      let todasClases = [...clasesLocal, ...clasesV2];
-      let todosUsuarios = [...usuariosLocal, ...usuariosV2];
-      
-      // Deduplicar
-      let clasesMap = new Map();
-      todasClases.forEach(c=>{ if(c && c.id && !isBlacklisted('clases', c.id)) clasesMap.set(c.id, c); });
-      let usuariosMap = new Map();
-      todosUsuarios.forEach(u=>{ if(u && u.id && !isBlacklisted('usuarios', u.id)) usuariosMap.set(u.id, u); });
-      
-      for(let c of clasesMap.values()){
-        await guardarEnNube('clases', c.id, c);
-      }
-      for(let u of usuariosMap.values()){
-        await guardarEnNube('usuarios', u.id, u);
-      }
-      
-      console.log(`Migradas ${clasesMap.size} clases y ${usuariosMap.size} usuarios a nube`);
-    }catch(e){
-      console.log('Error migrando:', e);
-    }
-  }
-  
-  return await sincronizarTodoDesdeNube(false);
-}
-
-async function cargarNube(){
-  crearIndicador('☁️ CONECTANDO NUBE...', '#D97706');
-  
-  // Generar device ID si no existe
-  if(!localStorage.getItem('ceut_device_id')){
-    localStorage.setItem('ceut_device_id', 'dev_'+Date.now()+'_'+Math.random().toString(36).substr(2,5));
-  }
-  
-  await migrarLocalANube();
-  let result = await sincronizarTodoDesdeNube(true);
-  
-  // Listeners tiempo real
-  try{
-    db.collection('clases').onSnapshot(async snap=>{
-      let clases = [];
-      snap.forEach(d=>{
-        let data = d.data();
-        if(!data.id) data.id = d.id;
-        if(!isBlacklisted('clases', data.id)) clases.push(data);
-      });
-      
-      // Comparar con lo que tenemos, solo actualizar si hay cambios
-      let actuales = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
-      if(JSON.stringify(clases.map(c=>c.id).sort()) !== JSON.stringify(actuales.map(c=>c.id).sort())){
-        localStorage.setItem('ceut_clases', JSON.stringify(clases));
-        localStorage.setItem('ceut_subjects_v2', JSON.stringify(clases));
-        window.__CLASES_NUBE__ = clases;
-        console.log('🔄 Clases tiempo real:', clases.length);
-        window.dispatchEvent(new CustomEvent('ceut-nube-sync', {detail: {clases}}));
-      }
-    });
-    
-    db.collection('usuarios').onSnapshot(snap=>{
-      let usuarios = [];
-      snap.forEach(d=>{
-        let data = d.data();
-        if(!data.id) data.id = d.id;
-        if(!isBlacklisted('usuarios', data.id)) usuarios.push(data);
-      });
-      
-      let actuales = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
-      if(JSON.stringify(usuarios.map(u=>u.id).sort()) !== JSON.stringify(actuales.map(u=>u.id).sort())){
-        localStorage.setItem('ceut_usuarios', JSON.stringify(usuarios));
-        localStorage.setItem('ceut_users_v2', JSON.stringify(usuarios));
-        window.__USUARIOS_NUBE__ = usuarios;
-        console.log('🔄 Usuarios tiempo real:', usuarios.length);
-        window.dispatchEvent(new CustomEvent('ceut-nube-sync', {detail: {usuarios}}));
-      }
-    });
-    
-    db.collection('ceut_config').doc('borrados').onSnapshot(snap=>{
-      if(snap.exists){
-        let blNube = snap.data();
-        let blLocal = getBlacklist();
-        let merged = {
-          usuarios: [...new Set([...(blLocal.usuarios||[]), ...(blNube.usuarios||[])])],
-          clases: [...new Set([...(blLocal.clases||[]), ...(blNube.clases||[])])]
-        };
-        localStorage.setItem('ceut_borrados', JSON.stringify(merged));
-        console.log('🔄 Blacklist actualizada desde nube');
-        // Re-sincronizar para filtrar
-        sincronizarTodoDesdeNube(false);
-      }
-    });
-    
-    console.log('✅ Listeners tiempo real activos');
-  }catch(e){
-    console.log('Error listeners:', e);
-  }
-  
-  return result;
-}
-
-window.validarClaveNube = async function(claveRaw){
-  let clave = claveRaw.trim().toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9-]/g,'');
-  if(!clave) return null;
-  
-  console.log('🔍 Validando clave:', clave);
-  
-  if(!window.__CLASES_NUBE__ || window.__CLASES_NUBE__.length===0){
-    await sincronizarTodoDesdeNube(false);
-  }
-  
-  try{
-    let clasesLocal = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
-    let clasesV2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
-    let todas = [...clasesLocal, ...clasesV2, ...(window.__CLASES_NUBE__||[])];
-    let map = new Map();
-    todas.forEach(c=>{ if(c && c.id && !isBlacklisted('clases', c.id)) map.set(c.id, c); });
-    todas = Array.from(map.values());
-    
-    let found = todas.find(c=>c.clave===clave || c.clave.replace(/-/g,'')===clave.replace(/-/g,''));
-    if(found){
-      console.log('✅ Clave encontrada:', found.clave);
-      return found;
-    }
-  }catch(e){}
-  
-  try{
-    let snap = await db.collection('clases').where('clave','==',clave).get();
-    if(!snap.empty){
-      let data = snap.docs[0].data();
-      if(!isBlacklisted('clases', data.id||snap.docs[0].id)) return data;
-    }
-    
-    let all = await db.collection('clases').get();
-    let f = null;
-    all.forEach(d=>{
-      let data = d.data();
-      if(data.clave && data.clave.replace(/-/g,'')===clave.replace(/-/g,'') && !isBlacklisted('clases', d.id)){
-        f = data;
-      }
-    });
-    if(f) return f;
-  }catch(e){
-    console.error('Error validando clave:', e);
-  }
-  
-  console.log('❌ Clave no encontrada:', clave);
-  return null;
-};
-
-// Exponer global
-window.guardarEnNube = guardarEnNube;
-window.cargarNube = cargarNube;
-window.sincronizarTodoDesdeNube = sincronizarTodoDesdeNube;
-window.forzarSincronizacionClaves = sincronizarTodoDesdeNube;
-window.migrarLocalANube = migrarLocalANube;
-window.getBlacklist = getBlacklist;
-window.addToBlacklist = addToBlacklist;
-window.isBlacklisted = isBlacklisted;
-
-// Función para forzar limpieza total y recarga desde nube (útil para debug)
-window.limpiarLocalYRecargarNube = async function(){
-  if(!confirm('¿Borrar datos locales y recargar TODO desde nube?\n\nSe descargará lo que está en Firebase.')) return;
-  localStorage.removeItem('ceut_clases');
-  localStorage.removeItem('ceut_subjects_v2');
-  localStorage.removeItem('ceut_subjects');
-  localStorage.removeItem('ceut_usuarios');
-  localStorage.removeItem('ceut_users_v2');
-  localStorage.removeItem('ceut_users');
-  console.log('Local limpiado, recargando desde nube...');
-  await sincronizarTodoDesdeNube(true);
-  alert('✅ Datos recargados desde nube. Recarga la página si no ves cambios.');
-  location.reload();
-};
-
-// Auto-sync
-setInterval(()=>{ sincronizarTodoDesdeNube(false); }, 8000);
-
-document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden){
-    console.log('📱 Visible, sincronizando...');
-    sincronizarTodoDesdeNube(false);
-  }
-});
-
-window.addEventListener('online', ()=>{
-  console.log('🌐 Online, sincronizando...');
-  sincronizarTodoDesdeNube(true);
-});
-
-setTimeout(()=>{ cargarNube().catch(e=>console.error(e)); }, 300);
-setTimeout(()=>{ sincronizarTodoDesdeNube(true); }, 1500);
-
-console.log('🔧 Sync definitivo v3.0 - CLOUD FIRST - iniciado');
-
 
 </script>
 
 
+<script type="module">
+// CONEXIÓN NUBE FIREBASE CON AUTH ANONIMA - PARA QUE SI CONECTE
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-<!-- Module script removido - usando compat mixceut -->
+const firebaseConfig = {
+  apiKey: "AIzaSyBOr0TZoNTZqtmKc_R5RclUp_oz6KZwHEI",
+  authDomain: "mixto-ceut.firebaseapp.com",
+  projectId: "mixto-ceut",
+  storageBucket: "mixto-ceut.firebasestorage.app",
+  messagingSenderId: "512091563071",
+  appId: "1:512091563071:web:4f89cefc34655bb7e3448a"
+};
+
+let db, auth;
+let cloudReady = false;
+
+try{
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  auth = getAuth(app);
+  window.__CEUT_DB__ = db;
+  window.__CEUT_AUTH__ = auth;
+
+  // AUTENTICACION ANONIMA - PARA QUE LAS REGLAS DEJEN ESCRIBIR
+  async function conectarNube(){
+    try{
+      document.getElementById('ceut-cloud-indicator').textContent = '☁️ CONECTANDO NUBE (AUTH)...';
+      document.getElementById('ceut-cloud-indicator').style.background = '#F59E0B';
+      
+      await signInAnonymously(auth);
+      console.log('☁️ Auth anónima OK:', auth.currentUser.uid);
+      
+      onAuthStateChanged(auth, (user)=>{
+        if(user){
+          cloudReady = true;
+          document.getElementById('ceut-cloud-indicator').textContent = '☁️ NUBE CONECTADA • ' + user.uid.substring(0,6);
+          document.getElementById('ceut-cloud-indicator').style.background = '#10B981';
+          cargarDesdeNube();
+          iniciarSyncTiempoReal();
+        }
+      });
+    }catch(e){
+      console.error('Error auth anonima', e);
+      document.getElementById('ceut-cloud-indicator').textContent = '❌ NUBE BLOQUEADA: ' + e.message;
+      document.getElementById('ceut-cloud-indicator').style.background = '#EF4444';
+      // Mostrar instrucciones para arreglar reglas
+      setTimeout(()=>{
+        alert('⚠️ LA NUBE ESTÁ BLOQUEADA POR REGLAS DE FIRESTORE
+
+SOLUCIÓN:
+1. Ve a console.firebase.google.com
+2. Proyecto mixto-ceut
+3. Firestore → Reglas
+4. Pega esto:
+
+rules_version = \'2\';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+
+5. Publicar
+
+Mientras tanto funciona en modo LOCAL.');
+      }, 1000);
+    }
+  }
+
+  async function cargarDesdeNube(){
+    try{
+      const usersSnap = await getDoc(doc(db, "ceut_data", "users"));
+      const subjectsSnap = await getDoc(doc(db, "ceut_data", "subjects"));
+      if(usersSnap.exists()){
+        const cloudUsers = usersSnap.data().data;
+        if(cloudUsers && cloudUsers.length>0){
+          const localUsers = localStorage.getItem('ceut_users_v2');
+          if(!localUsers || JSON.parse(localUsers).length < cloudUsers.length){
+            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudUsers));
+            console.log('☁️ Usuarios desde nube:', cloudUsers.length);
+            setTimeout(()=>location.reload(), 500);
+          }
+        }
+      }
+      if(subjectsSnap.exists()){
+        const cloudSubjects = subjectsSnap.data().data;
+        if(cloudSubjects && cloudSubjects.length>0){
+          const localSubjects = localStorage.getItem('ceut_subjects_v2');
+          if(!localSubjects || JSON.parse(localSubjects).length < cloudSubjects.length){
+            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudSubjects));
+            console.log('☁️ Clases desde nube:', cloudSubjects.length);
+            setTimeout(()=>location.reload(), 500);
+          }
+        }
+      }
+    }catch(e){ console.warn('Carga nube error', e); }
+  }
+
+  let saveTimeout;
+  async function guardarEnNube(){
+    if(!cloudReady) return;
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(async ()=>{
+      try{
+        const users = localStorage.getItem('ceut_users_v2');
+        const subjects = localStorage.getItem('ceut_subjects_v2');
+        if(users){
+          await setDoc(doc(db, "ceut_data", "users"), {data: JSON.parse(users), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
+        }
+        if(subjects){
+          await setDoc(doc(db, "ceut_data", "subjects"), {data: JSON.parse(subjects), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
+        }
+        console.log('☁️ Guardado en nube OK');
+        const ind = document.getElementById('ceut-cloud-indicator');
+        if(ind){ ind.textContent='☁️ NUBE SINCRONIZADA ✓'; ind.style.background='#10B981'; }
+      }catch(e){ 
+        console.warn('Error guardando nube', e); 
+        const ind = document.getElementById('ceut-cloud-indicator');
+        if(ind){ ind.textContent='❌ ERROR NUBE: ' + e.code; ind.style.background='#EF4444'; }
+      }
+    }, 1000);
+  }
+
+  function iniciarSyncTiempoReal(){
+    try{
+      onSnapshot(doc(db, "ceut_data", "users"), (snap)=>{
+        if(snap.exists()){
+          const cloudData = snap.data().data;
+          const localData = localStorage.getItem('ceut_users_v2');
+          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
+            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudData));
+          }
+        }
+      });
+      onSnapshot(doc(db, "ceut_data", "subjects"), (snap)=>{
+        if(snap.exists()){
+          const cloudData = snap.data().data;
+          const localData = localStorage.getItem('ceut_subjects_v2');
+          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
+            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudData));
+          }
+        }
+      });
+    }catch(e){}
+  }
+
+  // Interceptar localStorage
+  const originalSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function(key, value){
+    originalSetItem(key, value);
+    if((key==='ceut_users_v2' || key==='ceut_subjects_v2') && cloudReady){
+      guardarEnNube();
+    }
+  };
+
+  conectarNube();
+
+}catch(e){
+  console.error('Firebase init error', e);
+  document.getElementById('ceut-cloud-indicator').textContent = '❌ FIREBASE ERROR: ' + e.message;
+}
+</script>
 
 
 
