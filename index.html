@@ -437,6 +437,41 @@ iframe, video, img {
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+// === FIREBASE CONFIG - PROYECTO MIXCEUT - DEFINITIVO ===
+const firebaseConfig = {
+  apiKey: "AIzaSyB9va23hvQOgu2RnaPysKic9uuFEAO675o",
+  authDomain: "mixceut.firebaseapp.com",
+  projectId: "mixceut",
+  storageBucket: "mixceut.firebasestorage.app",
+  messagingSenderId: "81153498875",
+  appId: "1:81153498875:web:7cc2803c20c13bc3705a5e"
+};
+
+if(!firebase.apps.length){
+  firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
+const auth = firebase.auth();
+window.db = db;
+window.auth = auth;
+window.firebase = firebase;
+
+// Auth anónima para permitir escritura
+auth.signInAnonymously().catch(e=>{
+  console.log('Auth anónima error (puede ser ya logueado):', e.message);
+});
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    console.log('☁️ Auth OK:', user.uid);
+    window.__NUBE_AUTH_OK__ = true;
+  }
+});
+
+console.log('🔥 Firebase inicializado - Proyecto mixceut - db definido');
+</script>
 <script>
 
 function crearIndicador(texto, color){
@@ -919,175 +954,9 @@ console.log('🔧 Sync definitivo v3.0 - CLOUD FIRST - iniciado');
 
 </script>
 
-</script>
 
 
-<script type="module">
-// CONEXIÓN NUBE FIREBASE CON AUTH ANONIMA - PARA QUE SI CONECTE
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBOr0TZoNTZqtmKc_R5RclUp_oz6KZwHEI",
-  authDomain: "mixto-ceut.firebaseapp.com",
-  projectId: "mixto-ceut",
-  storageBucket: "mixto-ceut.firebasestorage.app",
-  messagingSenderId: "512091563071",
-  appId: "1:512091563071:web:4f89cefc34655bb7e3448a"
-};
-
-let db, auth;
-let cloudReady = false;
-
-try{
-  const app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  auth = getAuth(app);
-  window.__CEUT_DB__ = db;
-  window.__CEUT_AUTH__ = auth;
-
-  // AUTENTICACION ANONIMA - PARA QUE LAS REGLAS DEJEN ESCRIBIR
-  async function conectarNube(){
-    try{
-      document.getElementById('ceut-cloud-indicator').textContent = '☁️ CONECTANDO NUBE (AUTH)...';
-      document.getElementById('ceut-cloud-indicator').style.background = '#F59E0B';
-      
-      await signInAnonymously(auth);
-      console.log('☁️ Auth anónima OK:', auth.currentUser.uid);
-      
-      onAuthStateChanged(auth, (user)=>{
-        if(user){
-          cloudReady = true;
-          document.getElementById('ceut-cloud-indicator').textContent = '☁️ NUBE CONECTADA • ' + user.uid.substring(0,6);
-          document.getElementById('ceut-cloud-indicator').style.background = '#10B981';
-          cargarDesdeNube();
-          iniciarSyncTiempoReal();
-        }
-      });
-    }catch(e){
-      console.error('Error auth anonima', e);
-      document.getElementById('ceut-cloud-indicator').textContent = '❌ NUBE BLOQUEADA: ' + e.message;
-      document.getElementById('ceut-cloud-indicator').style.background = '#EF4444';
-      // Mostrar instrucciones para arreglar reglas
-      setTimeout(()=>{
-        alert('⚠️ LA NUBE ESTÁ BLOQUEADA POR REGLAS DE FIRESTORE
-
-SOLUCIÓN:
-1. Ve a console.firebase.google.com
-2. Proyecto mixto-ceut
-3. Firestore → Reglas
-4. Pega esto:
-
-rules_version = \'2\';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
-
-5. Publicar
-
-Mientras tanto funciona en modo LOCAL.');
-      }, 1000);
-    }
-  }
-
-  async function cargarDesdeNube(){
-    try{
-      const usersSnap = await getDoc(doc(db, "ceut_data", "users"));
-      const subjectsSnap = await getDoc(doc(db, "ceut_data", "subjects"));
-      if(usersSnap.exists()){
-        const cloudUsers = usersSnap.data().data;
-        if(cloudUsers && cloudUsers.length>0){
-          const localUsers = localStorage.getItem('ceut_users_v2');
-          if(!localUsers || JSON.parse(localUsers).length < cloudUsers.length){
-            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudUsers));
-            console.log('☁️ Usuarios desde nube:', cloudUsers.length);
-            setTimeout(()=>location.reload(), 500);
-          }
-        }
-      }
-      if(subjectsSnap.exists()){
-        const cloudSubjects = subjectsSnap.data().data;
-        if(cloudSubjects && cloudSubjects.length>0){
-          const localSubjects = localStorage.getItem('ceut_subjects_v2');
-          if(!localSubjects || JSON.parse(localSubjects).length < cloudSubjects.length){
-            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudSubjects));
-            console.log('☁️ Clases desde nube:', cloudSubjects.length);
-            setTimeout(()=>location.reload(), 500);
-          }
-        }
-      }
-    }catch(e){ console.warn('Carga nube error', e); }
-  }
-
-  let saveTimeout;
-  async function guardarEnNube(){
-    if(!cloudReady) return;
-    clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(async ()=>{
-      try{
-        const users = localStorage.getItem('ceut_users_v2');
-        const subjects = localStorage.getItem('ceut_subjects_v2');
-        if(users){
-          await setDoc(doc(db, "ceut_data", "users"), {data: JSON.parse(users), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
-        }
-        if(subjects){
-          await setDoc(doc(db, "ceut_data", "subjects"), {data: JSON.parse(subjects), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
-        }
-        console.log('☁️ Guardado en nube OK');
-        const ind = document.getElementById('ceut-cloud-indicator');
-        if(ind){ ind.textContent='☁️ NUBE SINCRONIZADA ✓'; ind.style.background='#10B981'; }
-      }catch(e){ 
-        console.warn('Error guardando nube', e); 
-        const ind = document.getElementById('ceut-cloud-indicator');
-        if(ind){ ind.textContent='❌ ERROR NUBE: ' + e.code; ind.style.background='#EF4444'; }
-      }
-    }, 1000);
-  }
-
-  function iniciarSyncTiempoReal(){
-    try{
-      onSnapshot(doc(db, "ceut_data", "users"), (snap)=>{
-        if(snap.exists()){
-          const cloudData = snap.data().data;
-          const localData = localStorage.getItem('ceut_users_v2');
-          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
-            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudData));
-          }
-        }
-      });
-      onSnapshot(doc(db, "ceut_data", "subjects"), (snap)=>{
-        if(snap.exists()){
-          const cloudData = snap.data().data;
-          const localData = localStorage.getItem('ceut_subjects_v2');
-          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
-            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudData));
-          }
-        }
-      });
-    }catch(e){}
-  }
-
-  // Interceptar localStorage
-  const originalSetItem = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = function(key, value){
-    originalSetItem(key, value);
-    if((key==='ceut_users_v2' || key==='ceut_subjects_v2') && cloudReady){
-      guardarEnNube();
-    }
-  };
-
-  conectarNube();
-
-}catch(e){
-  console.error('Firebase init error', e);
-  document.getElementById('ceut-cloud-indicator').textContent = '❌ FIREBASE ERROR: ' + e.message;
-}
-</script>
+<!-- Module script removido - usando compat mixceut -->
 
 
 
@@ -1230,6 +1099,7 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
 .psico-btn-warning{background:#FFB800;color:#150D33;border:2px solid #150D33}
 .psico-btn-dark{background:#150D33;color:#FFB800;border:2px solid #FFB800}
 .psico-badge{border-radius:999px;padding:3px 8px;font-size:8px;font-weight:800}
+</style>
 <button id="psico-float-btn" onclick="window.openPsicoAdmin()">🧠 PSICOPEDAGÓGICO</button>
 
 <div id="psico-admin-overlay">
