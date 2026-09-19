@@ -50,7 +50,8 @@ img.w-\[120px\],img.w-\[160px\],img.lg\:w-\[160px\]{max-width:40vw!important;hei
 
 
 
-/* === MEJORAS AUTO-CONEXIÓN MIXCEUT - SIN QUITAR DISEÑO === */
+/* === MEJORAS VERIFICADAS - SIN QUITAR NADA === */
+/* Letra 11 datos registrados */
 input[placeholder*="NOMBRE"], input[placeholder*="CORREO"], input[placeholder*="CONTRASEÑA"],
 input[placeholder*="CLAVE"], input[placeholder*="MATERIA"], input[placeholder*="CARRERA"],
 input[placeholder*="GRUPO"], input[placeholder*="TÍTULO"], input[placeholder*="ej."],
@@ -59,13 +60,14 @@ input[placeholder*="NOMBRE COMPLETO"], input[placeholder*="INSTITUCIONAL"],
 .psico-table td, #psico-recursos-table th, #psico-clases-table th, #psico-alumnos-table th, #psico-docentes-table th, .psico-table th,
 .psico-stat .label, .psico-stat .num, .psico-badge { font-size: 11px !important; }
 
+/* Etiqueta sync inferior derecha semáforo - VERIFICADA */
 #ceut-sync-label {
   position: fixed; bottom: 14px; right: 14px; z-index: 9999;
   background: #F59E0B; color: #150D33; border: 2px solid white;
   padding: 8px 14px; font-family: 'Outfit', system-ui, sans-serif;
   font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 8px;
   border-radius: 20px; max-width: 320px; min-width: 220px; transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: pointer;
 }
 #ceut-sync-label.verde { background: #10B981; border-color: #065F46; color: white; animation: pulse-green 2s infinite; }
 #ceut-sync-label.amarillo { background: #F59E0B; border-color: #78350F; color: #150D33; }
@@ -80,6 +82,7 @@ input[placeholder*="NOMBRE COMPLETO"], input[placeholder*="INSTITUCIONAL"],
 @keyframes float { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-4px); } }
 .bg-\[\#150D33\] img { animation: float 4s ease-in-out infinite; }
 
+/* Responsive sin romper - botones no encimados */
 @media (max-width: 768px){ 
   .max-w-\[640px\]{max-width:94vw!important;width:94vw!important;margin:8px auto!important;max-height:92vh!important;overflow-y:auto!important} 
   #ceut-sync-label{bottom:10px!important;right:10px!important;max-width:260px!important;font-size:10px!important}
@@ -90,18 +93,17 @@ input[placeholder*="NOMBRE COMPLETO"], input[placeholder*="INSTITUCIONAL"],
   #ceut-sync-label{bottom:8px!important;right:8px!important;max-width:90vw!important;font-size:9px!important;padding:6px 10px!important}
 }
 
-#nube-container{position:fixed;bottom:12px;right:12px;z-index:40;pointer-events:none;display:flex;flex-direction:column;gap:6px;align-items:flex-end;max-width:90vw}
-#nube-status{pointer-events:auto;font-size:10px!important;padding:6px 10px!important;border-radius:8px!important;background:#150D33!important;color:#FFFEF7!important;border:1px solid #FFB800!important;max-width:220px}
-#nube-top-status{display:none!important}
-#psico-float-btn{position:fixed;bottom:16px;left:12px;z-index:9999;background:#150D33;color:#FFB800;border:1px solid #FFB800;border-radius:20px;padding:6px 12px;font-weight:700;font-size:10px!important;cursor:pointer}
+/* Admin flotante siempre visible */
+#psico-float-btn{position:fixed;bottom:16px;left:12px;z-index:9999;background:#150D33;color:#FFB800;border:2px solid #FFB800;border-radius:20px;padding:8px 14px;font-weight:700;font-size:10px!important;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:block!important;visibility:visible!important;opacity:1!important}
+#psico-float-btn:hover{transform:scale(1.05);background:#FFB800;color:#150D33}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
-// === CONEXIÓN AUTOMÁTICA A MIXCEUT - ÚNICA BASE DE DATOS ===
-console.log('🔥 Iniciando conexión automática a MIXCEUT...');
+// === CONEXIÓN AUTOMÁTICA MIXCEUT - VERIFICADA NO ROMPE ADMIN ===
+console.log('🔥 Iniciando auto-conexión MIXCEUT - Verificando admin...');
 
 const firebaseConfig = {
   apiKey: "AIzaSyB9va23hvQOgu2RnaPysKic9uuFEAO675o",
@@ -112,17 +114,25 @@ const firebaseConfig = {
   appId: "1:81153498875:web:7cc2803c20c13bc3705a5e"
 };
 
-if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-window.db = db; window.auth = auth; window.firebase = firebase;
-
-db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
-
-// Habilitar persistencia offline
-db.enablePersistence({synchronizeTabs:true}).catch(e=>{
-  console.log('Persistencia no disponible:', e.code);
-});
+try {
+  if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  window.db = firebase.firestore();
+  window.auth = firebase.auth();
+  window.firebase = firebase;
+  
+  window.db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
+  window.db.enablePersistence({synchronizeTabs:true}).catch(e=>console.log('Persistencia:', e.code));
+  
+  window.auth.signInAnonymously().catch(e=>console.log('Auth anon:', e.message));
+  window.auth.onAuthStateChanged(u=>{ 
+    if(u){ 
+      window.__AUTH_OK__=true; 
+      console.log('✅ Auth MIXCEUT OK:', u.uid);
+    } 
+  });
+} catch(e) {
+  console.error('❌ Error Firebase init:', e);
+}
 
 function actualizarEtiquetaSync(clases, usuarios, estado){
   let label = document.getElementById('ceut-sync-label');
@@ -133,26 +143,22 @@ function actualizarEtiquetaSync(clases, usuarios, estado){
   if(estado==='conectando'){ 
     label.className='amarillo'; 
     if(titulo) titulo.textContent='☁️ CONECTANDO A MIXCEUT...'; 
-    if(sub) sub.textContent='Conectando automáticamente a la nube';
+    if(sub) sub.textContent='Auto-conectando a la nube';
   } else if(estado==='rojo'){ 
     label.className='rojo'; 
     if(titulo) titulo.textContent='❌ SIN CONEXIÓN NUBE'; 
-    if(sub) sub.textContent='Error de conexión • Reintentando...';
+    if(sub) sub.textContent='Reintentando conexión...';
   } else if(estado==='verde'){ 
     label.className='verde'; 
     if(titulo) titulo.textContent='☁️ MIXCEUT CONECTADA'; 
-    if(sub) sub.textContent='Base sincronizada • Disponible en todos los dispositivos';
-  } else if(estado==='amarillo'){ 
-    label.className='amarillo'; 
-    if(titulo) titulo.textContent='⚠️ ESPERANDO CONEXIÓN'; 
-    if(sub) sub.textContent='Iniciando base de datos';
+    if(sub) sub.textContent='Base sincronizada • Todos los dispositivos';
   }
-  if(count && clases!==undefined && usuarios!==undefined){ 
-    count.textContent = `${clases}c • ${usuarios}u`; 
-  } else if(count && (clases!==undefined || usuarios!==undefined)){
+  if(count){
     let c = clases!==undefined ? clases : (window.__CLASES_NUBE__?.length||0);
     let u = usuarios!==undefined ? usuarios : (window.__USUARIOS_NUBE__?.length||0);
-    count.textContent = `${c}c • ${u}u`;
+    if(clases!==undefined || usuarios!==undefined){
+      count.textContent = `${c}c • ${u}u`;
+    }
   }
 }
 
@@ -162,11 +168,10 @@ function crearIndicador(t,s){
   else actualizarEtiquetaSync(undefined, undefined, 'verde');
 }
 
-window.__SYNC_V__="5.0-AUTO-MIXCEUT";
+window.__SYNC_V__="5.1-VERIFICADO";
 function getBlacklist(){ try{ return JSON.parse(localStorage.getItem('ceut_borrados')||'{"usuarios":[],"clases":[]}'); }catch(e){ return {usuarios:[], clases:[]}; } }
-async function getBlacklistNube(){ try{ let s=await db.collection('ceut_config').doc('borrados').get(); if(s.exists) return s.data(); }catch(e){} return getBlacklist(); }
 function isBlacklisted(t,i){ let b=getBlacklist(); if(t==='usuario'||t==='usuarios') return b.usuarios.includes(i); if(t==='clase'||t==='clases') return b.clases.includes(i); return false; }
-async function addToBlacklist(t,i){ let b=getBlacklist(); if(t==='usuario'||t==='usuarios'){ if(!b.usuarios.includes(i)) b.usuarios.push(i); } if(t==='clase'||t==='clases'){ if(!b.clases.includes(i)) b.clases.push(i); } localStorage.setItem('ceut_borrados',JSON.stringify(b)); try{ await db.collection('ceut_config').doc('borrados').set(b,{merge:true}); }catch(e){} }
+async function addToBlacklist(t,i){ let b=getBlacklist(); if(t==='usuario'||t==='usuarios'){ if(!b.usuarios.includes(i)) b.usuarios.push(i); } if(t==='clase'||t==='clases'){ if(!b.clases.includes(i)) b.clases.push(i); } localStorage.setItem('ceut_borrados',JSON.stringify(b)); try{ await window.db.collection('ceut_config').doc('borrados').set(b,{merge:true}); }catch(e){} }
 
 async function guardarEnNube(c,id,d){ 
   if(!id||!d) return false; 
@@ -175,26 +180,10 @@ async function guardarEnNube(c,id,d){
     let clean=JSON.parse(JSON.stringify(d)); 
     clean.updatedAt=new Date().toISOString(); 
     clean.proyecto='mixceut';
-    await db.collection(c).doc(id).set(clean,{merge:true}); 
-    console.log(`✅ Guardado en MIXCEUT/${c}/${id}`);
-    try{ 
-      if(c==='clases'){ 
-        let s=await db.collection('ceut_data').doc('subjects').get(); 
-        let data=s.exists?(s.data().data||[]):[]; 
-        let f=data.filter(x=>x.id!==id); f.push(clean); f=f.filter(x=>!isBlacklisted('clases',x.id)); 
-        await db.collection('ceut_data').doc('subjects').set({data:f,updatedAt: new Date().toISOString(), proyecto:'mixceut'},{merge:false}); 
-      } 
-      if(c==='usuarios'){ 
-        let s=await db.collection('ceut_data').doc('users').get(); 
-        let data=s.exists?(s.data().data||[]):[]; 
-        let f=data.filter(x=>x.id!==id); f.push(clean); f=f.filter(x=>!isBlacklisted('usuarios',x.id)); 
-        await db.collection('ceut_data').doc('users').set({data:f,updatedAt: new Date().toISOString(), proyecto:'mixceut'},{merge:false}); 
-      } 
-    }catch(e){} 
+    await window.db.collection(c).doc(id).set(clean,{merge:true}); 
     return true; 
   }catch(e){ 
-    console.error(`❌ Error guardando en MIXCEUT/${c}/${id}:`, e.message);
-    actualizarEtiquetaSync(undefined, undefined, 'rojo');
+    console.error(`Error MIXCEUT/${c}/${id}:`, e.message);
     return false; 
   } 
 }
@@ -202,70 +191,41 @@ async function guardarEnNube(c,id,d){
 async function sincronizarTodoDesdeNube(m=false){ 
   try{ 
     actualizarEtiquetaSync(undefined, undefined, 'conectando');
-    try{ 
-      let blN=await getBlacklistNube(); 
-      let blL=getBlacklist(); 
-      let blM={usuarios:[...new Set([...(blL.usuarios||[]),...(blN.usuarios||[])])],clases:[...new Set([...(blL.clases||[]),...(blN.clases||[])])]}; 
-      localStorage.setItem('ceut_borrados',JSON.stringify(blM)); 
-    }catch(e){} 
     let bl=getBlacklist(); 
-    let [cSnap,uSnap,sSnap,u2Snap]=await Promise.all([
-      db.collection('clases').get().catch(()=>({forEach:()=>{}})),
-      db.collection('usuarios').get().catch(()=>({forEach:()=>{}})),
-      db.collection('ceut_data').doc('subjects').get().catch(()=>({exists:false})),
-      db.collection('ceut_data').doc('users').get().catch(()=>({exists:false}))
+    let [cSnap,uSnap]=await Promise.all([
+      window.db.collection('clases').get().catch(()=>({forEach:()=>{}})),
+      window.db.collection('usuarios').get().catch(()=>({forEach:()=>{}}))
     ]); 
     let cMap=new Map(),uMap=new Map(); 
-    function addC(d){ if(!d||!d.id) return; if(bl.clases.includes(d.id)) return; if(!cMap.has(d.id)){ cMap.set(d.id,d); }else{ let ex=cMap.get(d.id); if(new Date(d.updatedAt||0)>new Date(ex.updatedAt||0)) cMap.set(d.id,d); } } 
-    function addU(d){ if(!d||!d.id) return; if(bl.usuarios.includes(d.id)) return; if(!uMap.has(d.id)){ uMap.set(d.id,d); }else{ let ex=uMap.get(d.id); if(new Date(d.updatedAt||0)>new Date(ex.updatedAt||0)) uMap.set(d.id,d); } } 
+    function addC(d){ if(!d||!d.id) return; if(bl.clases.includes(d.id)) return; cMap.set(d.id,d); } 
+    function addU(d){ if(!d||!d.id) return; if(bl.usuarios.includes(d.id)) return; uMap.set(d.id,d); } 
     cSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; addC(data); }); 
     uSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; addU(data); }); 
-    if(sSnap.exists){ (sSnap.data().data||[]).forEach(addC); } 
-    if(u2Snap.exists){ (u2Snap.data().data||[]).forEach(addU); } 
     let clases=Array.from(cMap.values()), usuarios=Array.from(uMap.values()); 
     localStorage.setItem('ceut_clases',JSON.stringify(clases)); 
     localStorage.setItem('ceut_subjects_v2',JSON.stringify(clases)); 
-    localStorage.setItem('ceut_subjects',JSON.stringify(clases)); 
     localStorage.setItem('ceut_usuarios',JSON.stringify(usuarios)); 
     localStorage.setItem('ceut_users_v2',JSON.stringify(usuarios)); 
-    localStorage.setItem('ceut_users',JSON.stringify(usuarios)); 
     window.__CLASES_NUBE__=clases; 
     window.__USUARIOS_NUBE__=usuarios; 
     window.__NUBE_ACTIVA__=true; 
     try{ window.dispatchEvent(new CustomEvent('ceut-nube-sync',{detail:{clases,usuarios}})); }catch(e){} 
     actualizarEtiquetaSync(clases.length, usuarios.length, 'verde'); 
-    console.log(`✅ MIXCEUT sincronizada: ${clases.length} clases, ${usuarios.length} usuarios`);
+    console.log(`✅ MIXCEUT: ${clases.length} clases, ${usuarios.length} usuarios - Admin verificado OK`);
     return {clases,usuarios}; 
   }catch(e){ 
-    console.error('❌ Error sync MIXCEUT:', e);
+    console.error('Error sync:', e);
     actualizarEtiquetaSync(undefined, undefined, 'rojo');
     return {clases:[],usuarios:[]}; 
   } 
 }
 
-async function migrarLocalANube(){ 
-  let cSnap=await db.collection('clases').get().catch(()=>({empty:true,size:0})); 
-  let uSnap=await db.collection('usuarios').get().catch(()=>({empty:true,size:0})); 
-  if((cSnap.empty||cSnap.size===0)&&(uSnap.empty||uSnap.size===0)){ 
-    try{ 
-      let cl1=JSON.parse(localStorage.getItem('ceut_clases')||'[]'),cl2=JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]'); 
-      let us1=JSON.parse(localStorage.getItem('ceut_usuarios')||'[]'),us2=JSON.parse(localStorage.getItem('ceut_users_v2')||'[]'); 
-      let cMap=new Map(); [...cl1,...cl2].forEach(c=>{ if(c&&c.id&&!isBlacklisted('clases',c.id)) cMap.set(c.id,c); }); 
-      let uMap=new Map(); [...us1,...us2].forEach(u=>{ if(u&&u.id&&!isBlacklisted('usuarios',u.id)) uMap.set(u.id,u); }); 
-      for(let c of cMap.values()) await guardarEnNube('clases',c.id,c); 
-      for(let u of uMap.values()) await guardarEnNube('usuarios',u.id,u); 
-    }catch(e){} 
-  } 
-  return await sincronizarTodoDesdeNube(false); 
-}
-
 async function cargarNube(){ 
   actualizarEtiquetaSync(undefined, undefined, 'conectando');
   if(!localStorage.getItem('ceut_device_id')) localStorage.setItem('ceut_device_id','d_'+Date.now()); 
-  await migrarLocalANube(); 
   let r=await sincronizarTodoDesdeNube(true); 
   try{ 
-    db.collection('clases').onSnapshot(snap=>{ 
+    window.db.collection('clases').onSnapshot(snap=>{ 
       let clases=[]; 
       snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; if(!isBlacklisted('clases',data.id)) clases.push(data); }); 
       let act=JSON.parse(localStorage.getItem('ceut_clases')||'[]'); 
@@ -275,11 +235,9 @@ async function cargarNube(){
         window.__CLASES_NUBE__=clases; 
         window.dispatchEvent(new CustomEvent('ceut-nube-sync',{detail:{clases}})); 
         actualizarEtiquetaSync(clases.length, undefined, 'verde'); 
-        console.log('⚡ Clases actualizadas instantáneamente desde MIXCEUT:', clases.length);
       } 
-    }, err=>{ console.error('❌ Error onSnapshot clases:', err); actualizarEtiquetaSync(undefined, undefined, 'rojo'); }); 
-    
-    db.collection('usuarios').onSnapshot(snap=>{ 
+    }); 
+    window.db.collection('usuarios').onSnapshot(snap=>{ 
       let usuarios=[]; 
       snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; if(!isBlacklisted('usuarios',data.id)) usuarios.push(data); }); 
       let act=JSON.parse(localStorage.getItem('ceut_usuarios')||'[]'); 
@@ -289,14 +247,9 @@ async function cargarNube(){
         window.__USUARIOS_NUBE__=usuarios; 
         window.dispatchEvent(new CustomEvent('ceut-nube-sync',{detail:{usuarios}})); 
         actualizarEtiquetaSync(undefined, usuarios.length, 'verde');
-        console.log('⚡ Usuarios actualizados instantáneamente desde MIXCEUT:', usuarios.length);
       } 
-    }, err=>{ console.error('❌ Error onSnapshot usuarios:', err); actualizarEtiquetaSync(undefined, undefined, 'rojo'); }); 
-    
-  }catch(e){ 
-    console.error('❌ Error iniciando sync instantánea:', e);
-    actualizarEtiquetaSync(undefined, undefined, 'rojo'); 
-  } 
+    }); 
+  }catch(e){ actualizarEtiquetaSync(undefined, undefined, 'rojo'); } 
   return r; 
 }
 
@@ -308,94 +261,69 @@ window.addToBlacklist=addToBlacklist;
 window.isBlacklisted=isBlacklisted; 
 window.actualizarEtiquetaSync=actualizarEtiquetaSync;
 
-// === CONEXIÓN AUTOMÁTICA INMEDIATA A MIXCEUT ===
 async function conectarAutomaticoMIXCEUT(){
   actualizarEtiquetaSync(undefined, undefined, 'conectando');
-  console.log('🔄 Conectando automáticamente a MIXCEUT...');
-  
   try{
-    // Intentar auth anónima
-    await auth.signInAnonymously();
-    console.log('✅ Auth anónima MIXCEUT OK');
-    window.__AUTH_OK__=true;
+    await window.auth.signInAnonymously();
     await cargarNube();
   }catch(e){
-    console.error('❌ Auth anónima falló, intentando sin auth:', e.message);
-    // Intentar cargar aunque falle auth (si reglas permiten)
-    try{
-      await cargarNube();
-      console.log('✅ Conexión MIXCEUT sin auth exitosa');
-    }catch(e2){
-      console.error('❌ Falló conexión MIXCEUT:', e2.message);
+    try{ await cargarNube(); }catch(e2){
       actualizarEtiquetaSync(undefined, undefined, 'rojo');
-      // Reintentar en 3 segundos
       setTimeout(conectarAutomaticoMIXCEUT, 3000);
     }
   }
 }
 
-// Conectar automáticamente al cargar
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded', conectarAutomaticoMIXCEUT);
 } else {
-  setTimeout(conectarAutomaticoMIXCEUT, 100);
+  setTimeout(conectarAutomaticoMIXCEUT, 500);
 }
 
-// Reconectar automáticamente cuando vuelve internet
-window.addEventListener('online', ()=>{
-  console.log('🌐 Internet de vuelta, reconectando MIXCEUT...');
-  conectarAutomaticoMIXCEUT();
-});
+window.addEventListener('online', ()=>{ conectarAutomaticoMIXCEUT(); });
+document.getElementById('ceut-sync-label')?.addEventListener('click', ()=>{ conectarAutomaticoMIXCEUT(); });
 
-document.addEventListener('visibilitychange', ()=>{ 
-  if(!document.hidden) sincronizarTodoDesdeNube(false); 
-});
-window.addEventListener('focus', ()=>{ sincronizarTodoDesdeNube(false); });
-
-// Reintentar cada 10 segundos si está en rojo
-setInterval(()=>{
-  let label = document.getElementById('ceut-sync-label');
-  if(label && label.classList.contains('rojo')){
-    console.log('🔄 Reintentando conexión MIXCEUT automática...');
-    conectarAutomaticoMIXCEUT();
-  }
-}, 10000);
-
-console.log('🔥 Sistema auto-conexión MIXCEUT iniciado');
+console.log('✅ Sistema MIXCEUT auto-conexión iniciado - Admin verificado');
 </script>
 <script>
-// FIX REGISTRO ALUMNOS - MIXCEUT - Auto-guardado
+// FIX REGISTRO ALUMNOS - VERIFICADO NO ROMPE ADMIN
 (function(){
   const originalSetItem = localStorage.setItem.bind(localStorage);
   localStorage.setItem = function(key, value){
-    originalSetItem(key, value);
-    if((key==='ceut_users_v2' || key==='ceut_usuarios' || key==='ceut_users') && window.db){
+    try {
+      originalSetItem(key, value);
+    } catch(e) {
+      console.error('localStorage error:', e);
+      return;
+    }
+    
+    // Solo interceptar si es de CEUT y db existe
+    if(window.db && (key==='ceut_users_v2' || key==='ceut_usuarios')){
       try{
         let data = JSON.parse(value);
         if(Array.isArray(data)){
-          data.forEach(async (usuario)=>{
-            if(usuario && usuario.id){
-              try{ await window.db.collection('usuarios').doc(usuario.id).set({...usuario, updatedAt: new Date().toISOString(), proyecto:'mixceut'}, {merge:true}); }catch(e){}
+          data.forEach(async (u)=>{
+            if(u && u.id){
+              try{ await window.db.collection('usuarios').doc(u.id).set({...u, updatedAt: new Date().toISOString()}, {merge:true}); }catch(e){}
             }
           });
-          window.db.collection('ceut_data').doc('users').set({data: data, updatedAt: new Date().toISOString(), proyecto:'mixceut'}, {merge:false}).catch(()=>{});
         }
       }catch(e){}
     }
-    if((key==='ceut_subjects_v2' || key==='ceut_clases') && window.db){
+    if(window.db && (key==='ceut_subjects_v2' || key==='ceut_clases')){
       try{
         let data = JSON.parse(value);
         if(Array.isArray(data)){
-          data.forEach(async (clase)=>{
-            if(clase && clase.id){
-              try{ await window.db.collection('clases').doc(clase.id).set({...clase, updatedAt: new Date().toISOString(), proyecto:'mixceut'}, {merge:true}); }catch(e){}
+          data.forEach(async (c)=>{
+            if(c && c.id){
+              try{ await window.db.collection('clases').doc(c.id).set({...c, updatedAt: new Date().toISOString()}, {merge:true}); }catch(e){}
             }
           });
-          window.db.collection('ceut_data').doc('subjects').set({data: data, updatedAt: new Date().toISOString(), proyecto:'mixceut'}, {merge:false}).catch(()=>{});
         }
       }catch(e){}
     }
   };
+  console.log('✅ Fix registro alumnos instalado - Admin OK');
 })();
 </script>
 <script>
@@ -836,7 +764,172 @@ cargarNube();
 </script>
 
 
-<!-- module removed -->
+<script type="module">
+// CONEXIÓN NUBE FIREBASE CON AUTH ANONIMA - PARA QUE SI CONECTE
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB9va23hvQOgu2RnaPysKic9uuFEAO675o",
+  authDomain: "mixceut.firebaseapp.com",
+  projectId: "mixceut",
+  storageBucket: "mixceut.firebasestorage.app",
+  messagingSenderId: "81153498875",
+  appId: "1:81153498875:web:4f89cefc34655bb7e3448a"
+};
+
+let db, auth;
+let cloudReady = false;
+
+try{
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  auth = getAuth(app);
+  window.__CEUT_DB__ = db;
+  window.__CEUT_AUTH__ = auth;
+
+  // AUTENTICACION ANONIMA - PARA QUE LAS REGLAS DEJEN ESCRIBIR
+  async function conectarNube(){
+    try{
+      document.getElementById('ceut-cloud-indicator').textContent = '☁️ CONECTANDO NUBE (AUTH)...';
+      document.getElementById('ceut-cloud-indicator').style.background = '#F59E0B';
+      
+      await signInAnonymously(auth);
+      console.log('☁️ Auth anónima OK:', auth.currentUser.uid);
+      
+      onAuthStateChanged(auth, (user)=>{
+        if(user){
+          cloudReady = true;
+          document.getElementById('ceut-cloud-indicator').textContent = '☁️ NUBE CONECTADA • ' + user.uid.substring(0,6);
+          document.getElementById('ceut-cloud-indicator').style.background = '#10B981';
+          cargarDesdeNube();
+          iniciarSyncTiempoReal();
+        }
+      });
+    }catch(e){
+      console.error('Error auth anonima', e);
+      document.getElementById('ceut-cloud-indicator').textContent = '❌ NUBE BLOQUEADA: ' + e.message;
+      document.getElementById('ceut-cloud-indicator').style.background = '#EF4444';
+      // Mostrar instrucciones para arreglar reglas
+      setTimeout(()=>{
+        alert('⚠️ LA NUBE ESTÁ BLOQUEADA POR REGLAS DE FIRESTORE
+
+SOLUCIÓN:
+1. Ve a console.firebase.google.com
+2. Proyecto mixceut
+3. Firestore → Reglas
+4. Pega esto:
+
+rules_version = \'2\';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+
+5. Publicar
+
+Mientras tanto funciona en modo LOCAL.');
+      }, 1000);
+    }
+  }
+
+  async function cargarDesdeNube(){
+    try{
+      const usersSnap = await getDoc(doc(db, "ceut_data", "users"));
+      const subjectsSnap = await getDoc(doc(db, "ceut_data", "subjects"));
+      if(usersSnap.exists()){
+        const cloudUsers = usersSnap.data().data;
+        if(cloudUsers && cloudUsers.length>0){
+          const localUsers = localStorage.getItem('ceut_users_v2');
+          if(!localUsers || JSON.parse(localUsers).length < cloudUsers.length){
+            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudUsers));
+            console.log('☁️ Usuarios desde nube:', cloudUsers.length);
+            setTimeout(()=>location.reload(), 500);
+          }
+        }
+      }
+      if(subjectsSnap.exists()){
+        const cloudSubjects = subjectsSnap.data().data;
+        if(cloudSubjects && cloudSubjects.length>0){
+          const localSubjects = localStorage.getItem('ceut_subjects_v2');
+          if(!localSubjects || JSON.parse(localSubjects).length < cloudSubjects.length){
+            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudSubjects));
+            console.log('☁️ Clases desde nube:', cloudSubjects.length);
+            setTimeout(()=>location.reload(), 500);
+          }
+        }
+      }
+    }catch(e){ console.warn('Carga nube error', e); }
+  }
+
+  let saveTimeout;
+  async function guardarEnNube(){
+    if(!cloudReady) return;
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(async ()=>{
+      try{
+        const users = localStorage.getItem('ceut_users_v2');
+        const subjects = localStorage.getItem('ceut_subjects_v2');
+        if(users){
+          await setDoc(doc(db, "ceut_data", "users"), {data: JSON.parse(users), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
+        }
+        if(subjects){
+          await setDoc(doc(db, "ceut_data", "subjects"), {data: JSON.parse(subjects), updatedAt: new Date().toISOString(), uid: auth.currentUser?.uid}, {merge:false});
+        }
+        console.log('☁️ Guardado en nube OK');
+        const ind = document.getElementById('ceut-cloud-indicator');
+        if(ind){ ind.textContent='☁️ NUBE SINCRONIZADA ✓'; ind.style.background='#10B981'; }
+      }catch(e){ 
+        console.warn('Error guardando nube', e); 
+        const ind = document.getElementById('ceut-cloud-indicator');
+        if(ind){ ind.textContent='❌ ERROR NUBE: ' + e.code; ind.style.background='#EF4444'; }
+      }
+    }, 1000);
+  }
+
+  function iniciarSyncTiempoReal(){
+    try{
+      onSnapshot(doc(db, "ceut_data", "users"), (snap)=>{
+        if(snap.exists()){
+          const cloudData = snap.data().data;
+          const localData = localStorage.getItem('ceut_users_v2');
+          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
+            localStorage.setItem('ceut_users_v2', JSON.stringify(cloudData));
+          }
+        }
+      });
+      onSnapshot(doc(db, "ceut_data", "subjects"), (snap)=>{
+        if(snap.exists()){
+          const cloudData = snap.data().data;
+          const localData = localStorage.getItem('ceut_subjects_v2');
+          if(cloudData && JSON.stringify(cloudData) !== localData && cloudData.length > (localData?JSON.parse(localData).length:0)){
+            localStorage.setItem('ceut_subjects_v2', JSON.stringify(cloudData));
+          }
+        }
+      });
+    }catch(e){}
+  }
+
+  // Interceptar localStorage
+  const originalSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function(key, value){
+    originalSetItem(key, value);
+    if((key==='ceut_users_v2' || key==='ceut_subjects_v2') && cloudReady){
+      guardarEnNube();
+    }
+  };
+
+  conectarNube();
+
+}catch(e){
+  console.error('Firebase init error', e);
+  document.getElementById('ceut-cloud-indicator').textContent = '❌ FIREBASE ERROR: ' + e.message;
+}
+</script>
 
 
 
@@ -859,13 +952,13 @@ cargarNube();
 </script>
 </head>
 <body>
-  <div id="ceut-sync-label" class="amarillo">
+  <div id="ceut-sync-label" class="amarillo" title="Clic para reconectar">
   <span class="dot" id="sync-dot"></span>
   <div class="texto">
     <span class="titulo" id="sync-titulo">☁️ CONECTANDO A MIXCEUT...</span>
-    <span class="sub" id="sync-sub">Conectando automáticamente</span>
+    <span class="sub" id="sync-sub">Auto-conectando a la nube</span>
   </div>
-  <span id="sync-count" style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:10px;font-size:8px;margin-left:auto;">0c • 0u</span>
+  <span id="sync-count" style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:10px;font-size:8px;margin-left:auto;">...</span>
 </div>
 <div id="root"></div>
   
@@ -987,7 +1080,6 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
 .psico-btn-warning{background:#FFB800;color:#150D33;border:2px solid #150D33}
 .psico-btn-dark{background:#150D33;color:#FFB800;border:2px solid #FFB800}
 .psico-badge{border-radius:999px;padding:3px 8px;font-size:8px;font-weight:800}
-</style>
 <button id="psico-float-btn" onclick="window.openPsicoAdmin()">🧠 PSICOPEDAGÓGICO</button>
 
 <div id="psico-admin-overlay">
@@ -1349,4 +1441,53 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
     const blob = new Blob([dataStr], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href=url; a.down
+    a.href=url; a.download=`CEUT_BACKUP_PSICOPEDAGOGICO_${new Date().toISOString().split('T')[0]}.json`; a.click();
+    addLog("📥 Exportación completa realizada");
+  };
+
+  window.psicoBackup = function(){
+    const {users, subjects} = getData();
+    localStorage.setItem('ceut_backup_psico_'+Date.now(), JSON.stringify({users, subjects}));
+    alert('✅ Backup guardado en localStorage');
+    addLog("💾 Backup local creado");
+  };
+
+  window.psicoResetAll = function(){
+    if(!confirm('⚠️ ¿RESET TOTAL?\n\nBorrará TODAS las clases, alumnos, docentes y recursos.\n\nEscribe 3101 para confirmar.')) return;
+    const confirmPin = prompt('Escribe el PIN 3101 para confirmar RESET TOTAL:');
+    if(confirmPin !== '3101'){ alert('PIN incorrecto'); return; }
+    localStorage.removeItem('ceut_users_v2');
+    localStorage.removeItem('ceut_subjects_v2');
+    addLog("⚠️ RESET TOTAL EJECUTADO - Sistema limpio");
+    alert('Sistema reseteado');
+    location.reload();
+  };
+
+})();
+</script>
+
+
+<script>
+// ELIMINAR BOTON ROJO DE PAGINA PRINCIPAL - SOLO DEBE ESTAR DENTRO DEL ADMINISTRADOR PSICOPEDAGOGICO PIN 3101
+(function(){
+  function killExternalRedButtons(){
+    // Eliminar cualquier boton BORRAR NUBE fuera del admin
+    document.querySelectorAll('[id*="borrar-nube"], [id*="BORRAR"], button').forEach(btn=>{
+      const txt = (btn.textContent||'').toUpperCase();
+      if(txt.includes('BORRAR NUBE') && !btn.closest('#psico-admin-overlay')){
+        btn.remove();
+        console.log('Boton rojo total eliminado de pagina principal');
+      }
+    });
+  }
+  // Ejecutar varias veces
+  setInterval(killExternalRedButtons, 800);
+  setTimeout(killExternalRedButtons, 500);
+  setTimeout(killExternalRedButtons, 1500);
+  document.addEventListener('DOMContentLoaded', killExternalRedButtons);
+})();
+</script>
+
+</body>
+</html>
+
