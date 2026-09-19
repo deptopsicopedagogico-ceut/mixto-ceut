@@ -364,6 +364,33 @@ iframe {
   input, textarea, select { font-size: 11px !important; }
 }
 
+
+/* === FIX ADICIONAL PARA SINCRONIZACIÓN VISUAL === */
+.ceut-sync-indicator {
+  position: fixed;
+  bottom: 60px;
+  right: 16px;
+  background: #10B981;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  z-index: 9998;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .ceut-sync-indicator {
+    bottom: 70px;
+    right: 12px;
+    left: 12px;
+    text-align: center;
+    font-size: 9px;
+  }
+}
+
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -425,95 +452,375 @@ function crearIndicador(texto, color){
   }
   return ind;
 }
+
+// =====================================================
+// SISTEMA DE SINCRONIZACIÓN TOTAL EN NUBE - CEUT
+// Todo guardado en Firebase Firestore, visible en cualquier dispositivo
+// =====================================================
+
+window.__SYNC_VERSION__ = "2.0-CLOUD-FIRST";
+
+// Función para obtener blacklist
+function getBlacklist(){
+  try{
+    return JSON.parse(localStorage.getItem('ceut_borrados')||'{"usuarios":[],"clases":[]}');
+  }catch(e){
+    return {usuarios:[], clases:[]};
+  }
+}
+
+function isBlacklisted(tipo, id){
+  let bl = getBlacklist();
+  if(tipo==='usuario' || tipo==='usuarios') return bl.usuarios.includes(id);
+  if(tipo==='clase' || tipo==='clases') return bl.clases.includes(id);
+  return false;
+}
+
+// Guardar en nube con reintentos y múltiples colecciones
 async function guardarEnNube(coleccion, id, datos){
+  if(!id || !datos) return false;
+  if(isBlacklisted(coleccion, id)){
+    console.log('⛔ Bloqueado por lista negra:', coleccion, id);
+    return false;
+  }
+  
   try{
     let clean = JSON.parse(JSON.stringify(datos));
+    clean.updatedAt = new Date().toISOString();
+    clean.syncVersion = window.__SYNC_VERSION__;
+    
+    // Guardar en colección principal
     await db.collection(coleccion).doc(id).set(clean, {merge:true});
-    console.log('☁️ Guardado nube: '+coleccion+'/'+id);
+    console.log('☁️ Guardado en nube:', coleccion+'/'+id);
+    
+    // Guardar también en backup ceut_data para redundancia
+    try{
+      if(coleccion==='clases'){
+        let snap = await db.collection('ceut_data').doc('subjects').get();
+        let data = snap.exists ? (snap.data().data||[]) : [];
+        let filtrado = data.filter(c=>c.id!==id);
+        filtrado.push(clean);
+        await db.collection('ceut_data').doc('subjects').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
+        await db.collection('ceut_data').doc('clases').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
+      }
+      if(coleccion==='usuarios'){
+        let snap = await db.collection('ceut_data').doc('users').get();
+        let data = snap.exists ? (snap.data().data||[]) : [];
+        let filtrado = data.filter(u=>u.id!==id);
+        filtrado.push(clean);
+        await db.collection('ceut_data').doc('users').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
+        await db.collection('ceut_data').doc('usuarios').set({data: filtrado, updatedAt: new Date().toISOString()}, {merge:false});
+      }
+    }catch(e){
+      console.log('Backup ceut_data falló (no crítico):', e.message);
+    }
+    
     return true;
-  }catch(e){ console.error(e); return false; }
+  }catch(e){
+    console.error('❌ Error guardando en nube:', coleccion, id, e);
+    crearIndicador('❌ ERROR NUBE: '+e.message.substring(0,30), '#EF4444');
+    return false;
+  }
 }
-async function eliminarDeNube(coleccion, id){
-  try{ await db.collection(coleccion).doc(id).delete(); console.log('🗑️ Eliminado nube:'+coleccion+'/'+id); return true; }catch(e){ return false; }
-}
-async function migrarLocalANube(){
+
+// Sincronizar TODO desde la nube - PRIORIDAD NUBE
+async function sincronizarTodoDesdeNube(forzarRecarga = false){
   try{
-    let clases1 = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
-    let clases2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
-    let todasClases = [...clases1, ...clases2];
-    let clasesUnicas = []; let ids = new Set();
-    todasClases.forEach(c=>{ if(c&&c.id&&!ids.has(c.id)){ ids.add(c.id); clasesUnicas.push(c); } });
-    let usuarios1 = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
-    let usuarios2 = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
-    let todosUsuarios = [...usuarios1, ...usuarios2];
-    let usuariosUnicos = []; let idsU = new Set();
-    todosUsuarios.forEach(u=>{ if(u&&u.id&&!idsU.has(u.id)){ idsU.add(u.id); usuariosUnicos.push(u); } });
-    if(clasesUnicas.length>0 || usuariosUnicos.length>0){
-      crearIndicador('☁️ SUBIENDO '+clasesUnicas.length+' CURSOS A NUBE...', '#F59E0B');
-      for(let c of clasesUnicas){ await guardarEnNube('clases', c.id, c); }
-      for(let u of usuariosUnicos){ await guardarEnNube('usuarios', u.id, u); }
-    }
-    return {clases: clasesUnicas, usuarios: usuariosUnicos};
-  }catch(e){ return {clases:[], usuarios:[]}; }
-}
-async async function cargarNube(){
-  crearIndicador('☁️ CONECTANDO NUBE MIXCEUT...', '#F59E0B');
-  try{
-    await migrarLocalANube();
-    let [cSnap, uSnap] = await Promise.all([db.collection('clases').get(), db.collection('usuarios').get()]);
-    let clasesNube=[], usuariosNube=[];
-    cSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; clasesNube.push(data); });
-    uSnap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; usuariosNube.push(data); });
-    if(clasesNube.length>0){
-      localStorage.setItem('ceut_clases', JSON.stringify(clasesNube));
-      localStorage.setItem('ceut_subjects_v2', JSON.stringify(clasesNube));
-      window.__CLASES_NUBE__ = clasesNube;
-    }
-    if(usuariosNube.length>0){
-      localStorage.setItem('ceut_usuarios', JSON.stringify(usuariosNube));
-      localStorage.setItem('ceut_users_v2', JSON.stringify(usuariosNube));
-      window.__USUARIOS_NUBE__ = usuariosNube;
-    }
-    crearIndicador('☁️ NUBE MIXCEUT ACTIVA • '+clasesNube.length+' cursos • '+usuariosNube.length+' usuarios', '#10B981');
-    db.collection('clases').onSnapshot(snap=>{
-      let clases=[]; snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; clases.push(data); });
-      if(clases.length>0){
-        localStorage.setItem('ceut_clases', JSON.stringify(clases));
-        localStorage.setItem('ceut_subjects_v2', JSON.stringify(clases));
-        window.__CLASES_NUBE__ = clases;
+    console.log('🔄 Sincronizando TODO desde nube...');
+    crearIndicador('☁️ SINCRONIZANDO DESDE NUBE...', '#F59E0B');
+    
+    let bl = getBlacklist();
+    
+    // Obtener de TODAS las fuentes de la nube en paralelo
+    let [clasesSnap, usuariosSnap, subjectsBackupSnap, usersBackupSnap, clasesBackupSnap, usuariosBackupSnap] = await Promise.all([
+      db.collection('clases').get().catch(()=>({forEach:()=>{}, empty:true, docs:[]})),
+      db.collection('usuarios').get().catch(()=>({forEach:()=>{}, empty:true, docs:[]})),
+      db.collection('ceut_data').doc('subjects').get().catch(()=>({exists:false})),
+      db.collection('ceut_data').doc('users').get().catch(()=>({exists:false})),
+      db.collection('ceut_data').doc('clases').get().catch(()=>({exists:false})),
+      db.collection('ceut_data').doc('usuarios').get().catch(()=>({exists:false}))
+    ]);
+    
+    let clasesMap = new Map();
+    let usuariosMap = new Map();
+    
+    // Función para agregar a mapa si no está en blacklist
+    function agregarClase(data){
+      if(!data || !data.id) return;
+      if(isBlacklisted('clases', data.id)) return;
+      if(!clasesMap.has(data.id) || (data.updatedAt && clasesMap.get(data.id).updatedAt < data.updatedAt)){
+        clasesMap.set(data.id, data);
       }
-    });
-    db.collection('usuarios').onSnapshot(snap=>{
-      let usuarios=[]; snap.forEach(d=>{ let data=d.data(); if(!data.id) data.id=d.id; usuarios.push(data); });
-      if(usuarios.length>0){
-        localStorage.setItem('ceut_usuarios', JSON.stringify(usuarios));
-        localStorage.setItem('ceut_users_v2', JSON.stringify(usuarios));
-        window.__USUARIOS_NUBE__ = usuarios;
+    }
+    
+    function agregarUsuario(data){
+      if(!data || !data.id) return;
+      if(isBlacklisted('usuarios', data.id)) return;
+      if(!usuariosMap.has(data.id) || (data.updatedAt && usuariosMap.get(data.id).updatedAt < data.updatedAt)){
+        usuariosMap.set(data.id, data);
       }
+    }
+    
+    // Recolectar clases
+    clasesSnap.forEach(d=>{
+      let data = d.data();
+      if(!data.id) data.id = d.id;
+      agregarClase(data);
     });
+    
+    // Recolectar usuarios
+    usuariosSnap.forEach(d=>{
+      let data = d.data();
+      if(!data.id) data.id = d.id;
+      agregarUsuario(data);
+    });
+    
+    // Backup subjects
+    if(subjectsBackupSnap.exists){
+      let data = subjectsBackupSnap.data().data||[];
+      data.forEach(agregarClase);
+    }
+    if(clasesBackupSnap.exists){
+      let data = clasesBackupSnap.data().data||[];
+      data.forEach(agregarClase);
+    }
+    
+    // Backup users
+    if(usersBackupSnap.exists){
+      let data = usersBackupSnap.data().data||[];
+      data.forEach(agregarUsuario);
+    }
+    if(usuariosBackupSnap.exists){
+      let data = usuariosBackupSnap.data().data||[];
+      data.forEach(agregarUsuario);
+    }
+    
+    let clasesNube = Array.from(clasesMap.values());
+    let usuariosNube = Array.from(usuariosMap.values());
+    
+    // Si hay datos locales que no están en nube (dispositivo nuevo con datos offline), subirlos
+    try{
+      let clasesLocal1 = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
+      let clasesLocal2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+      let usuariosLocal1 = JSON.parse(localStorage.getItem('ceut_usuarios')||'[]');
+      let usuariosLocal2 = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+      
+      let todosLocalClases = [...clasesLocal1, ...clasesLocal2];
+      let todosLocalUsuarios = [...usuariosLocal1, ...usuariosLocal2];
+      
+      for(let c of todosLocalClases){
+        if(c && c.id && !clasesMap.has(c.id) && !isBlacklisted('clases', c.id)){
+          console.log('📤 Subiendo clase local a nube:', c.id);
+          await guardarEnNube('clases', c.id, c);
+          clasesMap.set(c.id, c);
+        }
+      }
+      for(let u of todosLocalUsuarios){
+        if(u && u.id && !usuariosMap.has(u.id) && !isBlacklisted('usuarios', u.id)){
+          console.log('📤 Subiendo usuario local a nube:', u.id);
+          await guardarEnNube('usuarios', u.id, u);
+          usuariosMap.set(u.id, u);
+        }
+      }
+      
+      clasesNube = Array.from(clasesMap.values());
+      usuariosNube = Array.from(usuariosMap.values());
+    }catch(e){
+      console.log('Error migrando local a nube:', e);
+    }
+    
+    // Guardar en TODAS las keys de localStorage para compatibilidad
+    localStorage.setItem('ceut_clases', JSON.stringify(clasesNube));
+    localStorage.setItem('ceut_subjects_v2', JSON.stringify(clasesNube));
+    localStorage.setItem('ceut_subjects', JSON.stringify(clasesNube));
+    localStorage.setItem('ceut_usuarios', JSON.stringify(usuariosNube));
+    localStorage.setItem('ceut_users_v2', JSON.stringify(usuariosNube));
+    localStorage.setItem('ceut_users', JSON.stringify(usuariosNube));
+    
+    // Variables globales
+    window.__CLASES_NUBE__ = clasesNube;
+    window.__USUARIOS_NUBE__ = usuariosNube;
+    window.__NUBE_ACTIVA__ = true;
+    
+    // Disparar evento para que React se entere
+    try{
+      window.dispatchEvent(new CustomEvent('ceut-nube-sync', {detail: {clases: clasesNube, usuarios: usuariosNube}}));
+      window.dispatchEvent(new Event('storage'));
+    }catch(e){}
+    
+    console.log(`✅ Sincronizadas ${clasesNube.length} clases y ${usuariosNube.length} usuarios desde nube`);
+    console.log('Claves:', clasesNube.map(c=>c.clave));
+    console.log('Usuarios:', usuariosNube.map(u=>u.correo));
+    
+    crearIndicador(`☁️ NUBE: ${clasesNube.length} cursos • ${usuariosNube.length} usuarios • SINCRONIZADO`, '#10B981');
+    
+    // Si se fuerza recarga y hay cambios, recargar datos en UI
+    if(forzarRecarga){
+      try{
+        // Intentar recargar la app React si existe función
+        if(window.location.reload && clasesNube.length>0){
+          // No recargar página, solo actualizar datos
+          console.log('Datos sincronizados, la app debería actualizarse automáticamente');
+        }
+      }catch(e){}
+    }
+    
     return {clases: clasesNube, usuarios: usuariosNube};
   }catch(e){
+    console.error('❌ Error sincronizando desde nube:', e);
     crearIndicador('❌ ERROR NUBE: '+e.message.substring(0,30), '#EF4444');
     return {clases:[], usuarios:[]};
   }
 }
+
+// Migrar local a nube (versión antigua, ahora usa la nueva)
+async function migrarLocalANube(){
+  return await sincronizarTodoDesdeNube(false);
+}
+
+// Cargar nube (versión compatible)
+async function cargarNube(){
+  crearIndicador('☁️ CONECTANDO NUBE CEUT...', '#F59E0B');
+  let result = await sincronizarTodoDesdeNube(false);
+  
+  // Configurar listeners en tiempo real
+  try{
+    db.collection('clases').onSnapshot(async snap=>{
+      let clases = [];
+      snap.forEach(d=>{
+        let data = d.data();
+        if(!data.id) data.id = d.id;
+        if(!isBlacklisted('clases', data.id)) clases.push(data);
+      });
+      
+      if(clases.length>0){
+        localStorage.setItem('ceut_clases', JSON.stringify(clases));
+        localStorage.setItem('ceut_subjects_v2', JSON.stringify(clases));
+        window.__CLASES_NUBE__ = clases;
+        console.log('🔄 Clases actualizadas en tiempo real:', clases.length);
+        window.dispatchEvent(new CustomEvent('ceut-nube-sync', {detail: {clases}}));
+      }
+    });
+    
+    db.collection('usuarios').onSnapshot(snap=>{
+      let usuarios = [];
+      snap.forEach(d=>{
+        let data = d.data();
+        if(!data.id) data.id = d.id;
+        if(!isBlacklisted('usuarios', data.id)) usuarios.push(data);
+      });
+      
+      if(usuarios.length>0){
+        localStorage.setItem('ceut_usuarios', JSON.stringify(usuarios));
+        localStorage.setItem('ceut_users_v2', JSON.stringify(usuarios));
+        window.__USUARIOS_NUBE__ = usuarios;
+        console.log('🔄 Usuarios actualizados en tiempo real:', usuarios.length);
+        window.dispatchEvent(new CustomEvent('ceut-nube-sync', {detail: {usuarios}}));
+      }
+    });
+    
+    console.log('✅ Listeners en tiempo real configurados');
+  }catch(e){
+    console.log('Error configurando listeners:', e);
+  }
+  
+  return result;
+}
+
+// Validar clave buscando en nube primero
 window.validarClaveNube = async function(claveRaw){
   let clave = claveRaw.trim().toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9-]/g,'');
   if(!clave) return null;
+  
+  console.log('🔍 Validando clave:', clave);
+  
+  // Primero intentar sincronizar rápido si no hay datos
+  if(!window.__CLASES_NUBE__ || window.__CLASES_NUBE__.length===0){
+    await sincronizarTodoDesdeNube(false);
+  }
+  
+  // Buscar en memoria y localStorage
   try{
     let clasesLocal = JSON.parse(localStorage.getItem('ceut_clases')||'[]');
     let clasesV2 = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
     let todas = [...clasesLocal, ...clasesV2, ...(window.__CLASES_NUBE__||[])];
+    // Deduplicar
+    let map = new Map();
+    todas.forEach(c=>{ if(c && c.id && !isBlacklisted('clases', c.id)) map.set(c.id, c); });
+    todas = Array.from(map.values());
+    
     let found = todas.find(c=>c.clave===clave || c.clave.replace(/-/g,'')===clave.replace(/-/g,''));
-    if(found) return found;
+    if(found){
+      console.log('✅ Clave encontrada local:', found.clave);
+      return found;
+    }
+  }catch(e){}
+  
+  // Buscar en Firestore directamente
+  try{
     let snap = await db.collection('clases').where('clave','==',clave).get();
-    if(!snap.empty) return snap.docs[0].data();
+    if(!snap.empty){
+      console.log('✅ Clave encontrada en Firestore exacta');
+      return snap.docs[0].data();
+    }
+    
     let all = await db.collection('clases').get();
-    let f=null; all.forEach(d=>{ let data=d.data(); if(data.clave && data.clave.replace(/-/g,'')===clave.replace(/-/g,'')) f=data; });
-    return f;
-  }catch(e){ return null; }
+    let f = null;
+    all.forEach(d=>{
+      let data = d.data();
+      if(data.clave && data.clave.replace(/-/g,'')===clave.replace(/-/g,'') && !isBlacklisted('clases', data.id||d.id)){
+        f = data;
+      }
+    });
+    if(f){
+      console.log('✅ Clave encontrada en Firestore sin guiones');
+      return f;
+    }
+  }catch(e){
+    console.error('Error validando clave:', e);
+  }
+  
+  console.log('❌ Clave no encontrada:', clave);
+  return null;
 };
+
+// Exponer funciones globalmente
 window.guardarEnNube = guardarEnNube;
+window.cargarNube = cargarNube;
+window.sincronizarTodoDesdeNube = sincronizarTodoDesdeNube;
+window.forzarSincronizacionClaves = sincronizarTodoDesdeNube;
+window.migrarLocalANube = migrarLocalANube;
+window.getBlacklist = getBlacklist;
+window.isBlacklisted = isBlacklisted;
+
+// Auto-sincronización cada 10 segundos y al volver a la pestaña
+setInterval(()=>{
+  sincronizarTodoDesdeNube(false);
+}, 10000);
+
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden){
+    console.log('📱 Pestaña visible, sincronizando...');
+    sincronizarTodoDesdeNube(false);
+  }
+});
+
+window.addEventListener('online', ()=>{
+  console.log('🌐 Conexión restaurada, sincronizando...');
+  sincronizarTodoDesdeNube(false);
+});
+
+// Sincronizar al iniciar
+setTimeout(()=>{
+  cargarNube().catch(e=>console.error(e));
+}, 500);
+
+setTimeout(()=>{
+  sincronizarTodoDesdeNube(false);
+}, 2000);
+
+console.log('🔧 Sistema de sincronización total en nube v2.0 iniciado - PRIORIDAD NUBE');
+
 setTimeout(()=>{ if(window.cargarNube) cargarNube().catch(e=>console.error(e)); }, 1000);
 
 // === PARCHE PARA QUE ALUMNOS NO VUELVAN A APARECER EN PORTAL PRINCIPAL ===
