@@ -50,6 +50,7 @@ img.w-\[120px\],img.w-\[160px\],img.lg\:w-\[160px\]{max-width:40vw!important;hei
 
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 const firebaseConfig = {
@@ -1202,84 +1203,406 @@ c("button",{onClick:q8,className:"w-full rounded-[14px] bg-[#150D33] text-[#FFB8
 </script>
 
 
-<!-- TODO EN MIXCEUT - NO ROMPE ADMIN -->
+<!-- FIX DEFINITIVO - NUBE CONECTA + UNA ETIQUETA + ADMIN -->
 <style>
-#mixceut-status{
-  position:fixed;bottom:14px;right:14px;z-index:9999;
-  background:#10B981;color:white;border:2px solid white;
-  padding:8px 14px;font-family:system-ui;font-size:11px;font-weight:800;
-  display:flex;gap:8px;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,0.2);
+#ceut-unica-etiqueta{
+  position:fixed!important;bottom:14px!important;right:14px!important;z-index:99999!important;
+  padding:12px 20px!important;border-radius:24px!important;
+  font-family:system-ui!important;font-size:11px!important;font-weight:900!important;
+  display:flex!important;align-items:center!important;gap:10px!important;
+  border:3px solid white!important;box-shadow:0 8px 24px rgba(0,0,0,0.3)!important;
+  cursor:pointer!important;min-width:260px!important;visibility:visible!important;opacity:1!important;
 }
-#mixceut-status.conectando{background:#F59E0B;color:#150D33}
-#mixceut-status.error{background:#EF4444}
+#ceut-unica-etiqueta.verde{background:#10B981!important;color:white!important}
+#ceut-unica-etiqueta.amarillo{background:#F59E0B!important;color:#150D33!important}
+#ceut-unica-etiqueta.rojo{background:#EF4444!important;color:white!important}
+#ceut-unica-etiqueta .dot{width:12px!important;height:12px!important;border-radius:50%!important;background:white!important;animation:blink 1.2s infinite!important}
+#ceut-unica-etiqueta.amarillo .dot{background:#150D33!important}
+#psico-float-btn{
+  position:fixed!important;bottom:20px!important;left:20px!important;z-index:9999999!important;
+  background:#150D33!important;color:#FFB800!important;border:3px solid #FFB800!important;
+  border-radius:999px!important;padding:12px 18px!important;font-weight:900!important;
+  display:flex!important;visibility:visible!important;opacity:1!important;cursor:pointer!important;
+}
+#psico-admin-overlay.active{display:block!important}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
 </style>
-<div id="mixceut-status" class="conectando">MIXCEUT CONECTANDO...</div>
+
+<div id="ceut-unica-etiqueta" class="amarillo"><span class="dot"></span><div><span id="unica-titulo">CONECTANDO MIXCEUT...</span><br><span id="unica-sub" style="font-size:8px">Verificando</span></div><span id="unica-count" style="margin-left:auto;background:rgba(0,0,0,0.2);padding:2px 8px;border-radius:10px;font-size:9px">...</span></div>
+
 <script>
 (function(){
-  function esperarDB(cb){
-    if(window.db && window.db.collection){ cb(window.db); }
-    else { setTimeout(function(){ esperarDB(cb); }, 500); }
+  console.log('FIX ROBUSTO - Nube MIXCEUT - Todos dispositivos');
+  
+  function actualizarEtiqueta(estado, titulo, sub, count){
+    var et=document.getElementById('ceut-unica-etiqueta');
+    var t=document.getElementById('unica-titulo');
+    var s=document.getElementById('unica-sub');
+    var c=document.getElementById('unica-count');
+    if(!et) return;
+    et.className=estado;
+    if(t) t.textContent=titulo;
+    if(s) s.textContent=sub;
+    if(c) c.textContent=count||'';
+    console.log('ETIQUETA '+estado+': '+titulo+' - '+sub);
   }
   
-  function guardarTodo(){
-    esperarDB(function(db){
-      try {
-        var u = localStorage.getItem('ceut_users_v2');
-        if(u){
-          var users = JSON.parse(u);
-          if(Array.isArray(users)){
-            users.forEach(function(x){ if(x&&x.id) db.collection('usuarios').doc(x.id).set({...x, proyecto:'mixceut', updatedAt:new Date().toISOString()}, {merge:true}); });
-            db.collection('ceut_data').doc('users').set({data:users, updatedAt:new Date().toISOString(), proyecto:'mixceut'}, {merge:true});
-          }
-        }
-        var c = localStorage.getItem('ceut_subjects_v2');
-        if(c){
-          var clases = JSON.parse(c);
-          if(Array.isArray(clases)){
-            clases.forEach(function(x){ if(x&&x.id) db.collection('clases').doc(x.id).set({...x, proyecto:'mixceut', updatedAt:new Date().toISOString()}, {merge:true}); });
-            db.collection('ceut_data').doc('subjects').set({data:clases, updatedAt:new Date().toISOString(), proyecto:'mixceut'}, {merge:true});
-          }
-        }
-        var el = document.getElementById('mixceut-status');
-        if(el){ el.textContent = 'MIXCEUT: '+(u?JSON.parse(u).length:0)+'u '+(c?JSON.parse(c).length:0)+'c - TODO GUARDADO'; el.className=''; }
-      } catch(e){}
-    });
+  // ADMIN - que abra siempre
+  window.openPsicoAdmin = function(){
+    var ov=document.getElementById('psico-admin-overlay');
+    if(ov){
+      ov.classList.add('active');
+      ov.style.display='block';
+      ov.style.visibility='visible';
+      ov.style.opacity='1';
+      ov.style.zIndex='9999998';
+      ov.style.position='fixed';
+      ov.style.inset='0';
+      var pin=document.getElementById('psico-pin-input');
+      if(pin) setTimeout(function(){pin.focus();},100);
+    }
+  };
+  window.closePsicoAdmin = function(){
+    var ov=document.getElementById('psico-admin-overlay');
+    if(ov){ ov.classList.remove('active'); ov.style.display='none'; }
+  };
+  
+  function asegurarAdmin(){
+    var btn=document.getElementById('psico-float-btn');
+    if(!btn){
+      var b=document.createElement('button');
+      b.id='psico-float-btn';
+      b.textContent='PSICOPEDAGOGICO';
+      b.onclick=window.openPsicoAdmin;
+      b.style.cssText='position:fixed;bottom:20px;left:20px;z-index:9999999;background:#150D33;color:#FFB800;border:3px solid #FFB800;border-radius:999px;padding:12px 18px;font-weight:900;cursor:pointer;display:flex;';
+      document.body.appendChild(b);
+    } else {
+      btn.onclick=window.openPsicoAdmin;
+      btn.style.display='flex'; btn.style.visibility='visible'; btn.style.opacity='1'; btn.style.zIndex='9999999';
+    }
   }
   
-  function cargarTodo(){
-    esperarDB(function(db){
-      db.collection('usuarios').get().then(function(snap){
+  // NUBE - Conexion robusta para todos los dispositivos
+  function conectarNube(){
+    actualizarEtiqueta('amarillo', 'CONECTANDO MIXCEUT...', 'Verificando conexion', '...');
+    
+    if(!window.firebase || !window.firebase.firestore){
+      setTimeout(conectarNube, 500);
+      return;
+    }
+    
+    var db;
+    try {
+      db = firebase.firestore();
+      window.db = db;
+    } catch(e){
+      console.error('Error firestore:', e);
+      actualizarEtiqueta('rojo', 'ERROR FIRESTORE', e.message, '...');
+      setTimeout(conectarNube, 3000);
+      return;
+    }
+    
+    // Intentar primero sin auth (si reglas permiten public)
+    // Si falla, intentar con auth anonima
+    function probarConexion(){
+      db.collection('ceut_data').doc('test').get().then(function(doc){
+        console.log('Conexion MIXCEUT OK - test doc:', doc.exists);
+        cargarDatosReales();
+      }).catch(function(e){
+        console.log('Error sin auth, probando con auth anonima:', e.code);
+        
+        if(firebase.auth){
+          firebase.auth().signInAnonymously().then(function(){
+            console.log('Auth anonima OK, probando conexion');
+            db.collection('ceut_data').doc('test').get().then(function(){
+              console.log('Conexion MIXCEUT OK con auth');
+              cargarDatosReales();
+            }).catch(function(e2){
+              console.error('Error aun con auth:', e2);
+              mostrarError(e2);
+            });
+          }).catch(function(eAuth){
+            console.error('Error auth anonima:', eAuth);
+            // Auth no habilitada, intentar directo con usuarios
+            if(eAuth.code==='auth/operation-not-allowed' || eAuth.code==='auth/admin-restricted-operation'){
+              console.log('Auth anonima no habilitada, probando conexion directa');
+              cargarDatosReales();
+            } else {
+              mostrarError(eAuth);
+            }
+          });
+        } else {
+          cargarDatosReales();
+        }
+      });
+    }
+    
+    function cargarDatosReales(){
+      db.collection('usuarios').get().then(function(snapU){
         var usuarios=[];
-        snap.forEach(function(d){ usuarios.push(d.data()); });
-        return db.collection('clases').get().then(function(snap2){
+        snapU.forEach(function(d){ usuarios.push(d.data()); });
+        
+        return db.collection('clases').get().then(function(snapC){
           var clases=[];
-          snap2.forEach(function(d){ clases.push(d.data()); });
-          var localU = JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
-          var localC = JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
-          if(usuarios.length>0 && (localU.length===0 || usuarios.length>localU.length)){
+          snapC.forEach(function(d){ clases.push(d.data()); });
+          
+          var localU=JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+          var localC=JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+          
+          console.log('MIXCEUT: '+usuarios.length+'u '+clases.length+'c | Local: '+localU.length+'u '+localC.length+'c');
+          
+          // Sincronizar
+          if(usuarios.length>localU.length){
             localStorage.setItem('ceut_users_v2', JSON.stringify(usuarios));
           }
-          if(clases.length>0 && (localC.length===0 || clases.length>localC.length)){
+          if(clases.length>localC.length){
             localStorage.setItem('ceut_subjects_v2', JSON.stringify(clases));
           }
-          var el=document.getElementById('mixceut-status');
-          if(el){ el.textContent='MIXCEUT: '+usuarios.length+'u '+clases.length+'c - TODO'; el.className=''; }
+          
+          if(localU.length>usuarios.length){
+            localU.forEach(function(u){ if(u.id) db.collection('usuarios').doc(u.id).set(u, {merge:true}); });
+          }
+          if(localC.length>clases.length){
+            localC.forEach(function(c){ if(c.id) db.collection('clases').doc(c.id).set(c, {merge:true}); });
+          }
+          
+          actualizarEtiqueta('verde', 'MIXCEUT CONECTADA', 'Todos los dispositivos - '+usuarios.length+'u '+clases.length+'c', usuarios.length+'u '+clases.length+'c');
+          
+          // Tiempo real
+          db.collection('usuarios').onSnapshot(function(snap){
+            var nuevos=[];
+            snap.forEach(function(d){ nuevos.push(d.data()); });
+            if(nuevos.length!==JSON.parse(localStorage.getItem('ceut_users_v2')||'[]').length){
+              localStorage.setItem('ceut_users_v2', JSON.stringify(nuevos));
+              actualizarEtiqueta('verde', 'MIXCEUT CONECTADA - '+nuevos.length+'u tiempo real', '', nuevos.length+'u '+clases.length+'c');
+            }
+          }, function(e){ console.error('Snapshot usuarios error:', e); });
+          
+          db.collection('clases').onSnapshot(function(snap){
+            var nuevas=[];
+            snap.forEach(function(d){ nuevas.push(d.data()); });
+            if(nuevas.length!==JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]').length){
+              localStorage.setItem('ceut_subjects_v2', JSON.stringify(nuevas));
+              actualizarEtiqueta('verde', 'MIXCEUT CONECTADA - '+nuevas.length+'c tiempo real', '', usuarios.length+'u '+nuevas.length+'c');
+            }
+          }, function(e){ console.error('Snapshot clases error:', e); });
         });
+      }).catch(function(e){
+        mostrarError(e);
       });
-    });
+    }
+    
+    function mostrarError(e){
+      console.error('Error MIXCEUT:', e);
+      var localU=JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+      var localC=JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+      
+      var msg = e.code || e.message;
+      
+      if(msg.includes('permission-denied') || msg.includes('Missing or insufficient permissions')){
+        actualizarEtiqueta('rojo', 'SIN PERMISOS', 'Reglas Firestore bloquean - Habilita lectura/escritura en Firebase Console', '...');
+        console.log('SOLUCION: Ve a Firebase Console > Firestore Database > Rules y pon: allow read, write: if true;');
+      } else if(localU.length>0 || localC.length>0){
+        actualizarEtiqueta('amarillo', 'LOCAL - '+localU.length+'u '+localC.length+'c', 'Error: '+msg, localU.length+'u '+localC.length+'c');
+      } else {
+        actualizarEtiqueta('rojo', 'SIN CONEXION - '+msg, 'No conectado', '0u 0c');
+      }
+      
+      setTimeout(conectarNube, 5000);
+    }
+    
+    probarConexion();
   }
   
+  window.guardarTodoEnMixceut = function(){
+    if(!window.db) return;
+    try {
+      var u=localStorage.getItem('ceut_users_v2');
+      var c=localStorage.getItem('ceut_subjects_v2');
+      if(u){ JSON.parse(u).forEach(function(x){ if(x.id) window.db.collection('usuarios').doc(x.id).set(x, {merge:true}); }); }
+      if(c){ JSON.parse(c).forEach(function(x){ if(x.id) window.db.collection('clases').doc(x.id).set(x, {merge:true}); }); }
+    } catch(e){ console.error('Error guardar:', e); }
+  };
+  
   try {
-    var orig = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = function(k,v){
+    var orig=localStorage.setItem.bind(localStorage);
+    localStorage.setItem=function(k,v){
       orig(k,v);
-      if(k==='ceut_users_v2' || k==='ceut_subjects_v2'){ setTimeout(guardarTodo, 300); }
+      if(k==='ceut_users_v2' || k==='ceut_subjects_v2'){ setTimeout(window.guardarTodoEnMixceut, 500); }
     };
   } catch(e){}
   
-  setTimeout(function(){ cargarTodo(); setTimeout(guardarTodo, 2000); }, 1500);
-  setInterval(guardarTodo, 10000);
-  window.guardarTodoEnMixceut = guardarTodo;
+  asegurarAdmin();
+  setInterval(asegurarAdmin, 1000);
+  setTimeout(conectarNube, 1500);
+  document.addEventListener('DOMContentLoaded', asegurarAdmin);
+  
+  var et=document.getElementById('ceut-unica-etiqueta');
+  if(et) et.onclick=function(){ conectarNube(); };
+  
+  console.log('FIX ROBUSTO INSTALADO - Admin abre + Nube conecta todos dispositivos');
+})();
+</script>
+
+<!-- ETIQUETA ESTADO NUBE - INFERIOR DERECHA - SIEMPRE VISIBLE - FIX AHORA -->
+<style>
+#ceut-unica-etiqueta-FIX{
+  position:fixed!important;
+  bottom:20px!important;
+  right:20px!important;
+  left:auto!important;
+  top:auto!important;
+  z-index:2147483647!important;
+  padding:14px 22px!important;
+  border-radius:28px!important;
+  font-family:system-ui, -apple-system, sans-serif!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  border:3px solid white!important;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4)!important;
+  cursor:pointer!important;
+  min-width:280px!important;
+  max-width:90vw!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  transform:none!important;
+}
+#ceut-unica-etiqueta-FIX.verde{
+  background:#10B981!important;
+  color:white!important;
+}
+#ceut-unica-etiqueta-FIX.amarillo{
+  background:#F59E0B!important;
+  color:#150D33!important;
+}
+#ceut-unica-etiqueta-FIX.rojo{
+  background:#EF4444!important;
+  color:white!important;
+}
+#ceut-unica-etiqueta-FIX .dot-FIX{
+  width:14px!important;
+  height:14px!important;
+  border-radius:50%!important;
+  background:white!important;
+  flex-shrink:0!important;
+  animation:blink-FIX 1s infinite!important;
+  display:block!important;
+}
+#ceut-unica-etiqueta-FIX.amarillo .dot-FIX{
+  background:#150D33!important;
+}
+@keyframes blink-FIX{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:0.5;transform:scale(0.9)}
+}
+</style>
+
+<div id="ceut-unica-etiqueta-FIX" class="amarillo" onclick="if(window.conectarNube) window.conectarNube(); else location.reload();">
+  <span class="dot-FIX"></span>
+  <div style="flex:1">
+    <div id="unica-titulo-FIX" style="font-size:12px;font-weight:900;line-height:1">CONECTANDO MIXCEUT...</div>
+    <div id="unica-sub-FIX" style="font-size:9px;font-weight:600;opacity:0.9;margin-top:2px">Verificando nube</div>
+  </div>
+  <span id="unica-count-FIX" style="background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:12px;font-size:10px;font-weight:800">...</span>
+</div>
+
+<script>
+(function(){
+  console.log('ETIQUETA NUBE INFERIOR DERECHA - RESTAURADA AHORA');
+  
+  // Eliminar etiquetas viejas que puedan tapar
+  function limpiarViejas(){
+    ['mixceut-status','ceut-sync-label','nube-top-status','nube-status','nube-container','ceut-cloud-indicator','ceut-unica-etiqueta'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el){
+        // No eliminar la nueva FIX, solo viejas
+        if(id!=='ceut-unica-etiqueta-FIX'){
+          el.style.display='none';
+        }
+      }
+    });
+  }
+  
+  function asegurarEtiquetaFIX(){
+    var et=document.getElementById('ceut-unica-etiqueta-FIX');
+    if(!et){
+      var div=document.createElement('div');
+      div.id='ceut-unica-etiqueta-FIX';
+      div.className='amarillo';
+      div.innerHTML='<span class="dot-FIX"></span><div style="flex:1"><div id="unica-titulo-FIX" style="font-size:12px;font-weight:900">CONECTANDO MIXCEUT...</div><div id="unica-sub-FIX" style="font-size:9px;opacity:0.9">Verificando</div></div><span id="unica-count-FIX" style="background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:12px;font-size:10px">...</span>';
+      div.onclick=function(){ if(window.conectarNube) window.conectarNube(); else location.reload(); };
+      div.style.cssText='position:fixed;bottom:20px;right:20px;z-index:2147483647;background:#F59E0B;color:#150D33;border:3px solid white;padding:14px 22px;border-radius:28px;font-weight:900;display:flex;gap:12px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.4);cursor:pointer;';
+      document.body.appendChild(div);
+      console.log('Etiqueta FIX creada en inferior derecha');
+      return div;
+    } else {
+      et.style.display='flex';
+      et.style.visibility='visible';
+      et.style.opacity='1';
+      et.style.zIndex='2147483647';
+      et.style.position='fixed';
+      et.style.bottom='20px';
+      et.style.right='20px';
+      et.style.left='auto';
+      et.style.top='auto';
+      return et;
+    }
+  }
+  
+  function actualizarEtiquetaFIX(estado, titulo, sub, count){
+    var et=asegurarEtiquetaFIX();
+    var t=document.getElementById('unica-titulo-FIX');
+    var s=document.getElementById('unica-sub-FIX');
+    var c=document.getElementById('unica-count-FIX');
+    if(!et) return;
+    et.className=estado;
+    if(t) t.textContent=titulo;
+    if(s) s.textContent=sub;
+    if(c) c.textContent=count||'';
+    console.log('ETIQUETA FIX '+estado+': '+titulo);
+  }
+  
+  // Conectar con las funciones existentes
+  window.actualizarEtiquetaFIX = actualizarEtiquetaFIX;
+  
+  // Si existe funcion antigua de actualizar etiqueta, hacer wrapper
+  var origActualizar = window.actualizarEtiqueta;
+  window.actualizarEtiqueta = function(estado, titulo, sub, count){
+    actualizarEtiquetaFIX(estado, titulo, sub, count);
+    if(origActualizar) origActualizar(estado, titulo, sub, count);
+  };
+  
+  // Iniciar
+  limpiarViejas();
+  asegurarEtiquetaFIX();
+  setInterval(limpiarViejas, 2000);
+  setInterval(asegurarEtiquetaFIX, 1000);
+  setTimeout(asegurarEtiquetaFIX, 100);
+  setTimeout(asegurarEtiquetaFIX, 500);
+  setTimeout(asegurarEtiquetaFIX, 1000);
+  setTimeout(asegurarEtiquetaFIX, 2000);
+  
+  // Mostrar estado inicial
+  setTimeout(function(){
+    var localU=JSON.parse(localStorage.getItem('ceut_users_v2')||'[]');
+    var localC=JSON.parse(localStorage.getItem('ceut_subjects_v2')||'[]');
+    if(window.db){
+      actualizarEtiquetaFIX('verde', 'MIXCEUT CONECTADA', 'Nube conectada - Tiempo real', localU.length+'u '+localC.length+'c');
+    } else if(localU.length>0 || localC.length>0){
+      actualizarEtiquetaFIX('amarillo', 'LOCAL - '+localU.length+'u '+localC.length+'c', 'Solo este dispositivo', localU.length+'u '+localC.length+'c');
+    } else {
+      actualizarEtiquetaFIX('rojo', 'SIN CONEXION', 'No conectado', '0u 0c');
+    }
+  }, 2000);
+  
+  document.addEventListener('DOMContentLoaded', asegurarEtiquetaFIX);
+  window.addEventListener('load', asegurarEtiquetaFIX);
+  
+  console.log('ETIQUETA INFERIOR DERECHA RESTAURADA - VERDE=Nube, AMARILLO=Local, ROJO=Sin conexion');
 })();
 </script>
 </body>
